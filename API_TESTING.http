@@ -1,0 +1,71 @@
+@baseUrl = http://localhost:5115/api
+
+### Health Check
+GET {{baseUrl}}/health
+
+### Get All Transactions
+GET {{baseUrl}}/transactions
+
+### Get Single Transaction
+GET {{baseUrl}}/transactions/1
+
+### Create Transaction
+POST {{baseUrl}}/transactions
+Content-Type: application/json
+
+{
+  "amount": 150.00,
+  "description": "New Purchase",
+  "transactionDate": "2024-01-25T00:00:00Z",
+  "merchant": "Target",
+  "category": "Shopping"
+}
+
+### Update Transaction
+PUT {{baseUrl}}/transactions/1
+Content-Type: application/json
+
+{
+  "description": "Updated Description",
+  "status": "Completed"
+}
+
+### Get All Disputes
+GET {{baseUrl}}/disputes
+
+### Get Single Dispute
+GET {{baseUrl}}/disputes/1
+
+### Get Disputes by Transaction
+GET {{baseUrl}}/disputes/transaction/1
+
+### Create Dispute
+POST {{baseUrl}}/disputes
+Content-Type: application/json
+
+{
+  "transactionId": 1,
+  "reason": "Unauthorized",
+  "description": "I did not authorize this purchase. Please investigate immediately."
+}
+
+### Update Dispute Status
+PUT {{baseUrl}}/disputes/1
+Content-Type: application/json
+
+{
+  "status": "UnderReview",
+  "resolutionNotes": "Investigating customer claim"
+}
+
+### Resolve Dispute with Refund
+PUT {{baseUrl}}/disputes/1
+Content-Type: application/json
+
+{
+  "status": "Refunded",
+  "resolutionNotes": "Refund approved and processed"
+}
+
+### Delete Dispute
+DELETE {{baseUrl}}/disputes/1
