@@ -1,36 +1,23 @@
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
-using TransactionDisputePortal.Api.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddOpenApi();
+builder.Services.AddControllers();
 
-// Add DbContext
-var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection") ??
-    "Host=postgres;Port=5432;Database=transactiondispute;Username=postgres;Password=postgres";
-
+// Configure DbContext with PostgreSQL
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(defaultConn));
+    options.UseNpgsql(connectionString));
 
-// Add repositories
-builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
-builder.Services.AddScoped<IDisputeRepository, DisputeRepository>();
-
-// Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();
     });
 });
-
-// Add controllers
-builder.Services.AddControllers();
 
 var app = builder.Build();
 

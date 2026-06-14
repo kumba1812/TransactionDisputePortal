@@ -19,7 +19,7 @@ export function DisputeHistory() {
       setDisputes(response.data);
       setError(null);
     } catch (err) {
-      setError('Failed to load dispute history');
+      setError('Failed to load dispute history ' + (err.response?.data?.message || err.message));
       console.error(err);
     } finally {
       setLoading(false);
