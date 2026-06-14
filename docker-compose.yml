@@ -1,6 +1,33 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15
+    container_name: tdp-postgres
+    environment:
+      POSTGRES_DB: transactiondispute
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: tdp-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
   backend:
     build:
       context: .
@@ -11,9 +38,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5115
-      - ConnectionStrings__DefaultConnection=Data Source=/app/data/transactiondispute.db
-    volumes:
-      - db-data:/app/data
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=transactiondispute;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5115/api/health"]
       interval: 30s
@@ -31,8 +58,7 @@ services:
     ports:
       - "5173:5173"
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     environment:
       - VITE_API_URL=http://backend:5115/api
     healthcheck:
@@ -45,8 +71,8 @@ services:
       - app-network
 
 volumes:
+  pgdata:
   db-data:
-    driver: local
 
 networks:
   app-network:

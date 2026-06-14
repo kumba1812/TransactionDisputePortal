@@ -8,9 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 // Add DbContext
+var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection") ??
+    "Host=postgres;Port=5432;Database=transactiondispute;Username=postgres;Password=postgres";
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? 
-        "Data Source=transactiondispute.db"));
+    options.UseNpgsql(defaultConn));
 
 // Add repositories
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
@@ -42,11 +44,11 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.MapControllers();
 
-// Apply migrations and seed data
+// Ensure database is created and seed data present
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
+    dbContext.Database.EnsureCreated();
 }
 
 app.Run();
