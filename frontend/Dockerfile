@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 WORKDIR /app
 
 # Copy package files
@@ -16,7 +16,7 @@ COPY frontend/TransactionDisputePortal.Web/ .
 RUN npm run build
 
 # Runtime stage
-FROM node:18-alpine AS runtime
+FROM node:20-alpine AS runtime
 WORKDIR /app
 
 # Install serve to run the static site
