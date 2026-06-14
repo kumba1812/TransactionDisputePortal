@@ -6,7 +6,8 @@ WORKDIR /app
 COPY frontend/TransactionDisputePortal.Web/package*.json ./
 
 # Install dependencies
-RUN npm ci
+# Use npm install instead of npm ci to avoid lockfile-related failures in build environment
+RUN npm install --no-audit --no-fund
 
 # Copy source code
 COPY frontend/TransactionDisputePortal.Web/ .
