@@ -3,14 +3,13 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Copy package files
-COPY frontend/TransactionDisputePortal.Web/package*.json ./
+COPY package*.json ./
 
 # Install dependencies
-# Use npm install instead of npm ci to avoid lockfile-related failures in build environment
 RUN npm install --no-audit --no-fund
 
 # Copy source code
-COPY frontend/TransactionDisputePortal.Web/ .
+COPY . .
 
 # Build application
 RUN npm run build
