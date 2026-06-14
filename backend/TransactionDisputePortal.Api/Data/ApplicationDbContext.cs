@@ -50,12 +50,12 @@ public class ApplicationDbContext : DbContext
             {
                 Id = 1,
                 CustomerId = 1,
-                TransactionId = "TXN001",
-                Amount = 125.50m,
-                Description = "Online Purchase",
+                TransactionId = "TXN20260604001",
+                Amount = 1250.50m,
+                Description = "ATM Withdrawal",
                 TransactionDate = DateTime.UtcNow.AddDays(-10),
-                Merchant = "Amazon",
-                Category = "Shopping",
+                Merchant = "FNB ATM - Sandton",
+                Category = "ATM Withdrawal",
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow.AddDays(-10)
             },
@@ -63,12 +63,12 @@ public class ApplicationDbContext : DbContext
             {
                 Id = 2,
                 CustomerId = 1,
-                TransactionId = "TXN002",
-                Amount = 89.99m,
-                Description = "Electronics",
+                TransactionId = "TXN20260609002",
+                Amount = 899.99m,
+                Description = "Monthly Insurance Premium",
                 TransactionDate = DateTime.UtcNow.AddDays(-5),
-                Merchant = "Best Buy",
-                Category = "Electronics",
+                Merchant = "Old Mutual Insurance",
+                Category = "Insurance",
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow.AddDays(-5)
             },
@@ -76,12 +76,12 @@ public class ApplicationDbContext : DbContext
             {
                 Id = 3,
                 CustomerId = 1,
-                TransactionId = "TXN003",
-                Amount = 45.00m,
-                Description = "Restaurant",
+                TransactionId = "TXN20260612003",
+                Amount = 450.00m,
+                Description = "Utility Payment",
                 TransactionDate = DateTime.UtcNow.AddDays(-2),
-                Merchant = "Pizza Hut",
-                Category = "Dining",
+                Merchant = "Eskom - Electricity",
+                Category = "Utilities",
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow.AddDays(-2)
             },
@@ -89,14 +89,40 @@ public class ApplicationDbContext : DbContext
             {
                 Id = 4,
                 CustomerId = 1,
-                TransactionId = "TXN004",
-                Amount = 200.00m,
-                Description = "Flight Booking",
-                TransactionDate = DateTime.UtcNow.AddDays(-15),
-                Merchant = "Delta Airlines",
-                Category = "Travel",
+                TransactionId = "TXN20260520004",
+                Amount = 2000.00m,
+                Description = "International Wire Transfer",
+                TransactionDate = DateTime.UtcNow.AddDays(-25),
+                Merchant = "Standard Chartered Bank - USA",
+                Category = "Wire Transfer",
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow.AddDays(-15)
+                CreatedAt = DateTime.UtcNow.AddDays(-25)
+            },
+            new()
+            {
+                Id = 5,
+                CustomerId = 1,
+                TransactionId = "TXN20260614005",
+                Amount = 325.50m,
+                Description = "Card Purchase",
+                TransactionDate = DateTime.UtcNow.AddDays(-1),
+                Merchant = "Pick n Pay - Westgate",
+                Category = "Retail",
+                Status = TransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            },
+            new()
+            {
+                Id = 6,
+                CustomerId = 1,
+                TransactionId = "TXN20260615006",
+                Amount = 150.00m,
+                Description = "Mobile Top-Up",
+                TransactionDate = DateTime.UtcNow,
+                Merchant = "Vodacom South Africa",
+                Category = "Mobile Services",
+                Status = TransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow
             }
         };
 
@@ -111,10 +137,10 @@ public class ApplicationDbContext : DbContext
                 TransactionIdFk = 1,
                 CustomerId = 1,
                 Reason = "Unauthorized",
-                Description = "I did not authorize this purchase",
+                Description = "I did not authorize this ATM withdrawal",
                 Status = DisputeStatus.UnderReview,
                 CreatedAt = DateTime.UtcNow.AddDays(-3),
-                RefundAmount = 125.50m
+                RefundAmount = 1250.50m
             },
             new()
             {
@@ -122,13 +148,13 @@ public class ApplicationDbContext : DbContext
                 TransactionId = 4,
                 TransactionIdFk = 4,
                 CustomerId = 1,
-                Reason = "Duplicate Charge",
-                Description = "This flight was charged twice",
+                Reason = "Incorrect Amount",
+                Description = "Wire transfer was charged twice",
                 Status = DisputeStatus.Resolved,
                 CreatedAt = DateTime.UtcNow.AddDays(-20),
                 ResolvedAt = DateTime.UtcNow.AddDays(-15),
-                ResolutionNotes = "Refund processed",
-                RefundAmount = 200.00m
+                ResolutionNotes = "Duplicate charge refunded to account",
+                RefundAmount = 2000.00m
             }
         };
 

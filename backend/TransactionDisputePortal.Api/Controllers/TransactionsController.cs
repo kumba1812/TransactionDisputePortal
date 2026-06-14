@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TransactionDisputePortal.Api.Dtos;
 using TransactionDisputePortal.Api.Models;
 using TransactionDisputePortal.Api.Repositories;
 
@@ -20,7 +21,8 @@ public class TransactionsController : ControllerBase
     public async Task<IActionResult> GetTransactions()
     {
         var transactions = await _repository.GetByCustomerIdAsync(CustomerId);
-        return Ok(transactions);
+        var result = transactions.Select(t => new TransactionDto(t)).ToList();
+        return Ok(result);
     }
 
     [HttpGet("{id}")]
@@ -30,7 +32,8 @@ public class TransactionsController : ControllerBase
         if (transaction == null)
             return NotFound(new { message = "Transaction not found" });
 
-        return Ok(transaction);
+        var result = new TransactionDto(transaction);
+        return Ok(result);
     }
 
     [HttpPost]
@@ -52,7 +55,7 @@ public class TransactionsController : ControllerBase
         };
 
         var result = await _repository.AddAsync(transaction);
-        return CreatedAtAction(nameof(GetTransaction), new { id = result.Id }, result);
+        return CreatedAtAction(nameof(GetTransaction), new { id = result.Id }, new TransactionDto(result));
     }
 
     [HttpPut("{id}")]
@@ -66,7 +69,7 @@ public class TransactionsController : ControllerBase
         transaction.Status = request.Status;
 
         await _repository.UpdateAsync(transaction);
-        return Ok(transaction);
+        return Ok(new TransactionDto(transaction));
     }
 
     [HttpDelete("{id}")]

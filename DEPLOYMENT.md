@@ -1,8 +1,8 @@
-# Deployment Guide - Transaction Dispute Portal
+# Deployment Guide - Capitec Transaction Dispute Portal
 
 ## Overview
 
-This guide provides comprehensive instructions for deploying the Transaction Dispute Portal to various environments.
+This guide provides comprehensive instructions for deploying the Capitec Transaction Dispute Portal to various environments.
 
 ## Table of Contents
 

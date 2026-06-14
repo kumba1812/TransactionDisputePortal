@@ -19,7 +19,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <h1>Transaction Dispute Portal</h1>
+          <h1>Capitec Transaction Dispute Portal</h1>
           <p className="subtitle">Manage your transactions and disputes</p>
         </div>
       </header>
@@ -62,7 +62,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>&copy; 2024 Transaction Dispute Portal. All rights reserved.</p>
+        <p>&copy; 2026 Capitec Transaction Dispute Portal. All rights reserved.</p>
       </footer>
     </div>
   )

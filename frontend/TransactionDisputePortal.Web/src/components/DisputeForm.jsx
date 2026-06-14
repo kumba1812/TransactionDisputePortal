@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { disputeApi } from '../services/api';
+import { formatCurrency, formatDate } from '../utils/statusHelpers';
 import '../styles/DisputeForm.css';
 
 export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
@@ -82,8 +83,8 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
 
       <div className="transaction-details">
         <p><strong>Merchant:</strong> {transaction.merchant}</p>
-        <p><strong>Amount:</strong> ${transaction.amount.toFixed(2)}</p>
-        <p><strong>Date:</strong> {new Date(transaction.transactionDate).toLocaleDateString()}</p>
+        <p><strong>Amount:</strong> {formatCurrency(transaction.amount)}</p>
+        <p><strong>Date:</strong> {formatDate(transaction.transactionDate)}</p>
         <p><strong>Description:</strong> {transaction.description}</p>
       </div>
 

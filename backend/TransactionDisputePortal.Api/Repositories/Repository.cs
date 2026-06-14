@@ -67,6 +67,7 @@ public class DisputeRepository : IDisputeRepository
         return await _context.Disputes
             .Where(d => d.CustomerId == customerId)
             .Include(d => d.Transaction)
+            .AsNoTracking()
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
     }
@@ -75,6 +76,7 @@ public class DisputeRepository : IDisputeRepository
     {
         return await _context.Disputes
             .Where(d => d.TransactionIdFk == transactionId)
+            .AsNoTracking()
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
     }
@@ -83,6 +85,7 @@ public class DisputeRepository : IDisputeRepository
     {
         return await _context.Disputes
             .Include(d => d.Transaction)
+            .AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == id);
     }
 

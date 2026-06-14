@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TransactionDisputePortal.Api.Dtos;
 using TransactionDisputePortal.Api.Models;
 using TransactionDisputePortal.Api.Repositories;
 
@@ -22,7 +23,8 @@ public class DisputesController : ControllerBase
     public async Task<IActionResult> GetDisputes()
     {
         var disputes = await _disputeRepository.GetByCustomerIdAsync(CustomerId);
-        return Ok(disputes);
+        var result = disputes.Select(d => new DisputeDto(d)).ToList();
+        return Ok(result);
     }
 
     [HttpGet("{id}")]
@@ -32,14 +34,16 @@ public class DisputesController : ControllerBase
         if (dispute == null)
             return NotFound(new { message = "Dispute not found" });
 
-        return Ok(dispute);
+        var result = new DisputeDto(dispute);
+        return Ok(result);
     }
 
     [HttpGet("transaction/{transactionId}")]
     public async Task<IActionResult> GetDisputesByTransaction(int transactionId)
     {
         var disputes = await _disputeRepository.GetByTransactionIdAsync(transactionId);
-        return Ok(disputes);
+        var result = disputes.Select(d => new DisputeDto(d)).ToList();
+        return Ok(result);
     }
 
     [HttpPost]
@@ -53,6 +57,11 @@ public class DisputesController : ControllerBase
         if (transaction == null || transaction.CustomerId != CustomerId)
             return BadRequest(new { message = "Invalid transaction" });
 
+        // Check if dispute already exists
+        var existingDisputes = await _disputeRepository.GetByTransactionIdAsync(request.TransactionId);
+        if (existingDisputes.Any())
+            return BadRequest(new { message = "A dispute already exists for this transaction" });
+
         var dispute = new Dispute
         {
             TransactionIdFk = request.TransactionId,
@@ -65,7 +74,7 @@ public class DisputesController : ControllerBase
         };
 
         var result = await _disputeRepository.AddAsync(dispute);
-        return CreatedAtAction(nameof(GetDispute), new { id = result.Id }, result);
+        return CreatedAtAction(nameof(GetDispute), new { id = result.Id }, new DisputeDto(result));
     }
 
     [HttpPut("{id}")]
@@ -87,7 +96,7 @@ public class DisputesController : ControllerBase
         }
 
         await _disputeRepository.UpdateAsync(dispute);
-        return Ok(dispute);
+        return Ok(new DisputeDto(dispute));
     }
 
     [HttpDelete("{id}")]

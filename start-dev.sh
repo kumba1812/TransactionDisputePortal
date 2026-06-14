@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Transaction Dispute Portal - Local Development Startup Script
+# Capitec Transaction Dispute Portal - Local Development Startup Script
 
 echo "================================================"
-echo "Transaction Dispute Portal - Local Dev Start"
+echo "Capitec Transaction Dispute Portal - Local Dev Start"
 echo "================================================"
 
 # Colors for output

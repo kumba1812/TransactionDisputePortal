@@ -1,4 +1,4 @@
-# Transaction Dispute Portal
+# Capitec Transaction Dispute Portal
 
 A full-stack web application for managing transaction disputes. Built with .NET 10 (backend API) and React + Vite (frontend), allowing customers to view transactions, file disputes, and track dispute history.
 

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { disputeApi } from '../services/api';
+import { getStatusLabel, formatCurrency, formatDate } from '../utils/statusHelpers';
+import { DisputeStatusModal } from './DisputeStatusModal';
 import '../styles/DisputeHistory.css';
 
 export function DisputeHistory() {
@@ -7,6 +9,7 @@ export function DisputeHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [selectedDispute, setSelectedDispute] = useState(null);
 
   useEffect(() => {
     fetchDisputes();
@@ -27,7 +30,8 @@ export function DisputeHistory() {
   };
 
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
+    const statusLabel = getStatusLabel(status).toLowerCase();
+    switch (statusLabel) {
       case 'pending':
         return '#ff9800';
       case 'underreview':
@@ -44,10 +48,15 @@ export function DisputeHistory() {
 
   const filteredDisputes = disputes.filter(dispute => {
     if (filter === 'all') return true;
-    return dispute.status.toLowerCase() === filter.toLowerCase();
+    return getStatusLabel(dispute.status).toLowerCase() === filter.toLowerCase();
   });
 
   const statusOptions = ['all', 'pending', 'underreview', 'resolved', 'rejected', 'refunded'];
+
+  const handleStatusUpdated = () => {
+    setSelectedDispute(null);
+    fetchDisputes();
+  };
 
   if (loading) return <div className="loading">Loading dispute history...</div>;
   if (error) return <div className="error">{error}</div>;
@@ -86,7 +95,7 @@ export function DisputeHistory() {
                   className="status-badge"
                   style={{ backgroundColor: getStatusColor(dispute.status) }}
                 >
-                  {dispute.status}
+                  {getStatusLabel(dispute.status)}
                 </span>
               </div>
 
@@ -100,16 +109,16 @@ export function DisputeHistory() {
                   </div>
                   <div className="detail-row">
                     <span className="label">Amount:</span>
-                    <span className="value">${dispute.refundAmount?.toFixed(2) || '0.00'}</span>
+                    <span className="value">{formatCurrency(dispute.refundAmount)}</span>
                   </div>
                   <div className="detail-row">
                     <span className="label">Created:</span>
-                    <span className="value">{new Date(dispute.createdAt).toLocaleDateString()}</span>
+                    <span className="value">{formatDate(dispute.createdAt)}</span>
                   </div>
                   {dispute.resolvedAt && (
                     <div className="detail-row">
                       <span className="label">Resolved:</span>
-                      <span className="value">{new Date(dispute.resolvedAt).toLocaleDateString()}</span>
+                      <span className="value">{formatDate(dispute.resolvedAt)}</span>
                     </div>
                   )}
                 </div>
@@ -120,10 +129,25 @@ export function DisputeHistory() {
                     <p>{dispute.resolutionNotes}</p>
                   </div>
                 )}
+
+                <button 
+                  className="update-status-btn"
+                  onClick={() => setSelectedDispute(dispute)}
+                >
+                  Update Status
+                </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {selectedDispute && (
+        <DisputeStatusModal 
+          dispute={selectedDispute}
+          onClose={() => setSelectedDispute(null)}
+          onStatusUpdated={handleStatusUpdated}
+        />
       )}
     </div>
   );

@@ -1,8 +1,8 @@
-# Testing Guide - Transaction Dispute Portal
+# Testing Guide - Capitec Transaction Dispute Portal
 
 ## Overview
 
-This guide covers testing strategies and procedures for the Transaction Dispute Portal.
+This guide covers testing strategies and procedures for the Capitec Transaction Dispute Portal.
 
 ## Table of Contents
 

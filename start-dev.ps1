@@ -1,7 +1,7 @@
-# Transaction Dispute Portal - Local Development Startup Script (PowerShell)
+# Capitec Transaction Dispute Portal - Local Development Startup Script (PowerShell)
 
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "Transaction Dispute Portal - Local Dev Start" -ForegroundColor Cyan
+Write-Host "Capitec Transaction Dispute Portal - Local Dev Start" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 
 # Check if .NET SDK is installed

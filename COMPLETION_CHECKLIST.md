@@ -1,4 +1,4 @@
-# ✅ Transaction Dispute Portal - Completion Checklist
+# ✅ Capitec Transaction Dispute Portal - Completion Checklist
 
 ## Project Status: ✅ COMPLETE & PRODUCTION-READY
 

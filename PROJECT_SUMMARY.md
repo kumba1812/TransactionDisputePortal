@@ -1,8 +1,8 @@
-# Transaction Dispute Portal - Project Summary
+# Capitec Transaction Dispute Portal - Project Summary
 
 ## ✅ Project Completion Status
 
-The Transaction Dispute Portal has been successfully developed as a production-grade full-stack application.
+The Capitec Transaction Dispute Portal has been successfully developed as a production-grade full-stack application.
 
 ### GitHub Repository
 **URL**: https://github.com/kumba1812/TransactionDisputePortal
@@ -277,8 +277,8 @@ Database (SQLite/SQL Server)
 ## 📝 Git Commits
 
 ```
-Initial commit: Transaction Dispute Portal project setup
-feat: Complete Transaction Dispute Portal with full-stack implementation
+Initial commit: Capitec Transaction Dispute Portal project setup
+feat: Complete Capitec Transaction Dispute Portal with full-stack implementation
 docs: Add comprehensive documentation for deployment, testing, and architecture
 ```
 
@@ -381,7 +381,7 @@ MIT License - See LICENSE file for details
 
 ## 🎉 Conclusion
 
-The Transaction Dispute Portal is a complete, production-grade full-stack application demonstrating:
+The Capitec Transaction Dispute Portal is a complete, production-grade full-stack application demonstrating:
 
 ✅ Modern software architecture principles  
 ✅ Full-stack development capabilities  

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { transactionApi, disputeApi } from '../services/api';
+import { getTransactionStatusLabel, formatCurrency, formatDate } from '../utils/statusHelpers';
 import '../styles/TransactionsList.css';
 
 export function TransactionsList({ onSelectTransaction }) {
@@ -52,13 +53,13 @@ export function TransactionsList({ onSelectTransaction }) {
             <tbody>
               {transactions.map((transaction) => (
                 <tr key={transaction.id}>
-                  <td>{new Date(transaction.transactionDate).toLocaleDateString()}</td>
+                  <td>{formatDate(transaction.transactionDate)}</td>
                   <td>{transaction.merchant}</td>
-                  <td className="amount">${transaction.amount.toFixed(2)}</td>
+                  <td className="amount">{formatCurrency(transaction.amount)}</td>
                   <td>{transaction.category}</td>
                   <td>
-                    <span className={`status status-${transaction.status.toLowerCase()}`}>
-                      {transaction.status}
+                    <span className={`status status-${getTransactionStatusLabel(transaction.status)?.toLowerCase()}`}>
+                      {getTransactionStatusLabel(transaction.status)}
                     </span>
                   </td>
                   <td>

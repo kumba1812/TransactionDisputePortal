@@ -1,4 +1,4 @@
-# Architecture Documentation - Transaction Dispute Portal
+# Architecture Documentation - Capitec Transaction Dispute Portal
 
 ## System Architecture Overview
 
