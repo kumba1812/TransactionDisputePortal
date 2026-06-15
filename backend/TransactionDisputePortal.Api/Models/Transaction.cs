@@ -1,26 +1,47 @@
-namespace TransactionDisputePortal.Api.Models;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-public class Transaction
+namespace TransactionDisputePortal.Api.Models
 {
-    public int Id { get; set; }
-    public int CustomerId { get; set; }
-    public string TransactionId { get; set; } = Guid.NewGuid().ToString();
-    public decimal Amount { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public DateTime TransactionDate { get; set; }
-    public string Merchant { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public TransactionStatus Status { get; set; } = TransactionStatus.Completed;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    // Banking-focused transaction model
+    public class Transaction
+    {
+        [Key]
+        public int Id { get; set; }
 
-    // Navigation
-    public ICollection<Dispute> Disputes { get; set; } = new List<Dispute>();
-}
+        [Column("customer_id")]
+        public int CustomerId { get; set; }
 
-public enum TransactionStatus
-{
-    Completed,
-    Pending,
-    Failed,
-    Refunded
+        [Column("transaction_uid")]
+        public string TransactionId { get; set; }
+
+        public decimal Amount { get; set; }
+
+        public string Description { get; set; }
+
+        [Column("transaction_date")]
+        public DateTime TransactionDate { get; set; }
+
+        public string Merchant { get; set; }
+
+        public string Category { get; set; }
+
+        public TransactionStatus Status { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        // navigation
+        public List<Dispute> Disputes { get; set; }
+    }
+
+    public enum TransactionStatus
+    {
+        Completed = 0,
+        Pending = 1,
+        Failed = 2,
+        Reversed = 3
+    }
 }

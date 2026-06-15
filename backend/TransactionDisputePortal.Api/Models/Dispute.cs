@@ -1,28 +1,53 @@
-namespace TransactionDisputePortal.Api.Models;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-public class Dispute
+namespace TransactionDisputePortal.Api.Models
 {
-    public int Id { get; set; }
-    public int TransactionId { get; set; }
-    public int CustomerId { get; set; }
-    public string Reason { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public DisputeStatus Status { get; set; } = DisputeStatus.Pending;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? ResolvedAt { get; set; }
-    public string? ResolutionNotes { get; set; }
-    public decimal? RefundAmount { get; set; }
+    // Banking-focused dispute model
+    public class Dispute
+    {
+        [Key]
+        public int Id { get; set; }
 
-    // Navigation
-    public int TransactionIdFk { get; set; }
-    public Transaction? Transaction { get; set; }
-}
+        [Column("transaction_id")]
+        public int TransactionId { get; set; }
 
-public enum DisputeStatus
-{
-    Pending,
-    UnderReview,
-    Resolved,
-    Rejected,
-    Refunded
+        [Column("customer_id")]
+        public int CustomerId { get; set; }
+
+        public string Reason { get; set; }
+
+        public string Description { get; set; }
+
+        public DisputeStatus Status { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("resolved_at")]
+        public DateTime? ResolvedAt { get; set; }
+
+        [Column("resolution_notes")]
+        public string? ResolutionNotes { get; set; }
+
+        [Column("refund_amount")]
+        public decimal? RefundAmount { get; set; }
+
+        [Column("transaction_id_fk")]
+        public int TransactionIdFk { get; set; }
+
+        [ForeignKey("TransactionIdFk")]
+        public Transaction Transaction { get; set; }
+    }
+
+    public enum DisputeStatus
+    {
+        Pending = 0,
+        UnderReview = 1,
+        Resolved = 2,
+        Refunded = 3,
+        Rejected = 4
+    }
 }

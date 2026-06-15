@@ -12,6 +12,7 @@ public class DisputeDto
     public DateTime? ResolvedAt { get; set; }
     public string? ResolutionNotes { get; set; }
     public decimal RefundAmount { get; set; }
+    public int TransactionIdFk { get; set; }
     public TransactionDto? Transaction { get; set; }
 
     public DisputeDto() { }
@@ -19,7 +20,7 @@ public class DisputeDto
     public DisputeDto(Models.Dispute dispute)
     {
         Id = dispute.Id;
-        TransactionId = dispute.TransactionIdFk;
+        TransactionId = dispute.TransactionId;
         CustomerId = dispute.CustomerId;
         Reason = dispute.Reason;
         Description = dispute.Description;
@@ -28,6 +29,7 @@ public class DisputeDto
         ResolvedAt = dispute.ResolvedAt;
         ResolutionNotes = dispute.ResolutionNotes;
         RefundAmount = dispute.RefundAmount.HasValue ? dispute.RefundAmount.Value : 0m;
+        TransactionIdFk = dispute.TransactionIdFk;
 
         // Include transaction without its disputes collection
         if (dispute.Transaction != null)

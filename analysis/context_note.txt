@@ -1,0 +1,8 @@
+User requested deeper analysis and to resume function calls. Continue code inspection and prepare changes: update disputes, transactions, categories, statuses to banking domain; add UI screen and backend logic to add dispute and change status. We must inspect relevant files and then prepare edits. Files located:
+- backend/TransactionDisputePortal.Api/Data/ApplicationDbContext.cs
+- backend/TransactionDisputePortal.Api/Models/Dispute.cs
+- backend/TransactionDisputePortal.Api/Models/Transaction.cs
+- backend/TransactionDisputePortal.Api/Controllers/DisputesController.cs
+- backend/TransactionDisputePortal.Api/Repositories/Repository.cs
+- DTOs and other controllers
+Next steps: open the files for analysis.

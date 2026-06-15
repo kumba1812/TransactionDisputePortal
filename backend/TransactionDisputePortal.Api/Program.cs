@@ -1,22 +1,21 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using TransactionDisputePortal.Api.Data;
+using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+});
 
-// Configure DbContext with PostgreSQL
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+// Configure DbContext (expects connection string in configuration)
+var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseNpgsql(conn));
 
 builder.Services.AddCors(options =>
 {
@@ -26,8 +25,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Repository registration
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<IDisputeRepository, DisputeRepository>();
+
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
@@ -43,8 +47,12 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// app.UseHttpsRedirection(); // Disabled for local development
 app.UseCors("AllowFrontend");
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
 app.MapControllers();
 
 // Ensure database is created and seed data present

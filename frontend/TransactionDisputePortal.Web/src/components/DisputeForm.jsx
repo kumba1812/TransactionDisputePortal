@@ -13,12 +13,16 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
   const [success, setSuccess] = useState(false);
   const [existingDisputes, setExistingDisputes] = useState([]);
 
-  const reasons = [
-    'Unauthorized',
+  const bankingReasons = [
+    'Unauthorized Transaction',
     'Duplicate Charge',
     'Incorrect Amount',
-    'Service Not Provided',
-    'Merchandise Not Received',
+    'ATM Malfunction',
+    'Fraudulent Activity',
+    'Missing Deposit',
+    'Wire Transfer Error',
+    'Reversal Request',
+    'Billing Error',
     'Other'
   ];
 
@@ -53,6 +57,11 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
       return;
     }
 
+    if (formData.description.trim().length < 10) {
+      setError('Description must be at least 10 characters');
+      return;
+    }
+
     try {
       setLoading(true);
       await disputeApi.createDispute({
@@ -82,15 +91,31 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
       </div>
 
       <div className="transaction-details">
-        <p><strong>Merchant:</strong> {transaction.merchant}</p>
-        <p><strong>Amount:</strong> {formatCurrency(transaction.amount)}</p>
-        <p><strong>Date:</strong> {formatDate(transaction.transactionDate)}</p>
-        <p><strong>Description:</strong> {transaction.description}</p>
+        <div className="detail-item">
+          <span className="label">Merchant:</span>
+          <span className="value">{transaction.merchant}</span>
+        </div>
+        <div className="detail-item">
+          <span className="label">Amount:</span>
+          <span className="value amount">{formatCurrency(transaction.amount)}</span>
+        </div>
+        <div className="detail-item">
+          <span className="label">Date:</span>
+          <span className="value">{formatDate(transaction.transactionDate)}</span>
+        </div>
+        <div className="detail-item">
+          <span className="label">Category:</span>
+          <span className="value">{transaction.category}</span>
+        </div>
+        <div className="detail-item">
+          <span className="label">Description:</span>
+          <span className="value">{transaction.description}</span>
+        </div>
       </div>
 
       {hasPendingDispute && (
         <div className="warning">
-          <strong>Note:</strong> This transaction has an existing dispute.
+          <strong>⚠️ Alert:</strong> This transaction already has an active dispute. You cannot create a duplicate dispute.
         </div>
       )}
 
@@ -102,32 +127,34 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
             name="reason"
             value={formData.reason}
             onChange={handleChange}
-            disabled={loading}
+            disabled={loading || hasPendingDispute}
             required
           >
             <option value="">Select a reason...</option>
-            {reasons.map(reason => (
+            {bankingReasons.map(reason => (
               <option key={reason} value={reason}>{reason}</option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="description">Description *</label>
+          <label htmlFor="description">Description of Dispute *</label>
           <textarea
             id="description"
             name="description"
             value={formData.description}
             onChange={handleChange}
-            placeholder="Please provide detailed information about your dispute..."
-            disabled={loading}
+            placeholder="Please provide detailed information about your dispute. Include any relevant dates, amounts, or reference numbers..."
+            disabled={loading || hasPendingDispute}
             required
             rows="6"
+            minLength="10"
           />
+          <small className="char-count">{formData.description.length} characters (minimum 10)</small>
         </div>
 
         {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">Dispute created successfully!</div>}
+        {success && <div className="success-message">✓ Dispute created successfully! Redirecting...</div>}
 
         <div className="form-actions">
           <button 
@@ -143,7 +170,7 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
             className="submit-btn"
             disabled={loading || hasPendingDispute}
           >
-            {loading ? 'Creating...' : 'Create Dispute'}
+            {loading ? 'Creating Dispute...' : 'Create Dispute'}
           </button>
         </div>
       </form>
