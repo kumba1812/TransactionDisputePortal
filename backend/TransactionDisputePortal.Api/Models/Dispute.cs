@@ -17,9 +17,9 @@ namespace TransactionDisputePortal.Api.Models
         [Column("customer_id")]
         public int CustomerId { get; set; }
 
-        public string Reason { get; set; }
+        public string Reason { get; set; } = string.Empty;
 
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         public DisputeStatus Status { get; set; }
 
@@ -39,7 +39,7 @@ namespace TransactionDisputePortal.Api.Models
         public int TransactionIdFk { get; set; }
 
         [ForeignKey("TransactionIdFk")]
-        public Transaction Transaction { get; set; }
+        public Transaction Transaction { get; set; } = null!;
     }
 
     public enum DisputeStatus

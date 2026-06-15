@@ -15,18 +15,18 @@ namespace TransactionDisputePortal.Api.Models
         public int CustomerId { get; set; }
 
         [Column("transaction_uid")]
-        public string TransactionId { get; set; }
+        public string TransactionId { get; set; } = string.Empty;
 
         public decimal Amount { get; set; }
 
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         [Column("transaction_date")]
         public DateTime TransactionDate { get; set; }
 
-        public string Merchant { get; set; }
+        public string Merchant { get; set; } = string.Empty;
 
-        public string Category { get; set; }
+        public string Category { get; set; } = string.Empty;
 
         public TransactionStatus Status { get; set; }
 
@@ -34,7 +34,7 @@ namespace TransactionDisputePortal.Api.Models
         public DateTime CreatedAt { get; set; }
 
         // navigation
-        public List<Dispute> Disputes { get; set; }
+        public List<Dispute> Disputes { get; set; } = new();
     }
 
     public enum TransactionStatus

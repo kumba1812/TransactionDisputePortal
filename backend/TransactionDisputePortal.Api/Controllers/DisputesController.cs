@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TransactionDisputePortal.Api.Dtos;
 using TransactionDisputePortal.Api.Models;
 using TransactionDisputePortal.Api.Repositories;
@@ -11,7 +12,13 @@ public class DisputesController : ControllerBase
 {
     private readonly IDisputeRepository _disputeRepository;
     private readonly ITransactionRepository _transactionRepository;
-    private const int CustomerId = 1; // Hardcoded for demo
+
+    private int GetUserId()
+    {
+        var idStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        if (int.TryParse(idStr, out var id)) return id;
+        return -1;
+    }
 
     public DisputesController(IDisputeRepository disputeRepository, ITransactionRepository transactionRepository)
     {
@@ -22,7 +29,10 @@ public class DisputesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetDisputes()
     {
-        var disputes = await _disputeRepository.GetByCustomerIdAsync(CustomerId);
+        var userId = GetUserId();
+        if (userId <= 0) return Unauthorized();
+
+        var disputes = await _disputeRepository.GetByCustomerIdAsync(userId);
         var result = disputes.Select(d => new DisputeDto(d)).ToList();
         return Ok(result);
     }
@@ -54,7 +64,9 @@ public class DisputesController : ControllerBase
 
         // Verify transaction exists and belongs to customer
         var transaction = await _transactionRepository.GetByIdAsync(request.TransactionId);
-        if (transaction == null || transaction.CustomerId != CustomerId)
+        var userId = GetUserId();
+        if (userId <= 0) return Unauthorized();
+        if (transaction == null || transaction.CustomerId != userId)
             return BadRequest(new { message = "Invalid transaction" });
 
         // Check if dispute already exists
@@ -65,7 +77,7 @@ public class DisputesController : ControllerBase
         var dispute = new Dispute
         {
             TransactionIdFk = request.TransactionId,
-            CustomerId = CustomerId,
+            CustomerId = userId,
             Reason = request.Reason,
             Description = request.Description,
             Status = DisputeStatus.Pending,
@@ -84,7 +96,7 @@ public class DisputesController : ControllerBase
         if (dispute == null)
             return NotFound(new { message = "Dispute not found" });
 
-        if (dispute.CustomerId != CustomerId && !User.IsInRole("Admin"))
+        if (dispute.CustomerId != GetUserId() && !User.IsInRole("Admin"))
             return Forbid();
 
         dispute.Status = request.Status;
@@ -106,7 +118,7 @@ public class DisputesController : ControllerBase
         if (dispute == null)
             return NotFound(new { message = "Dispute not found" });
 
-        if (dispute.CustomerId != CustomerId)
+        if (dispute.CustomerId != GetUserId())
             return Forbid();
 
         await _disputeRepository.DeleteAsync(id);

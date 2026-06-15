@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TransactionDisputePortal.Api.Dtos;
 using TransactionDisputePortal.Api.Models;
 using TransactionDisputePortal.Api.Repositories;
@@ -10,7 +11,13 @@ namespace TransactionDisputePortal.Api.Controllers;
 public class TransactionsController : ControllerBase
 {
     private readonly ITransactionRepository _repository;
-    private const int CustomerId = 1; // Hardcoded for demo, would come from auth in production
+
+    private int GetUserId()
+    {
+        var idStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        if (int.TryParse(idStr, out var id)) return id;
+        return -1;
+    }
 
     public TransactionsController(ITransactionRepository repository)
     {
@@ -20,7 +27,10 @@ public class TransactionsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetTransactions()
     {
-        var transactions = await _repository.GetByCustomerIdAsync(CustomerId);
+        var userId = GetUserId();
+        if (userId <= 0) return Unauthorized();
+
+        var transactions = await _repository.GetByCustomerIdAsync(userId);
         var result = transactions.Select(t => new TransactionDto(t)).ToList();
         return Ok(result);
     }
@@ -42,9 +52,12 @@ public class TransactionsController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        var userId = GetUserId();
+        if (userId <= 0) return Unauthorized();
+
         var transaction = new Transaction
         {
-            CustomerId = CustomerId,
+            CustomerId = userId,
             Amount = request.Amount,
             Description = request.Description,
             TransactionDate = request.TransactionDate,
