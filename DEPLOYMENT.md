@@ -68,7 +68,7 @@ This command:
 2. Builds the frontend React image
 3. Creates and starts both containers
 4. Sets up networking
-5. Initializes the SQLite database
+5. Initializes the PostgresDB database
 
 ### Access the Application
 
@@ -174,7 +174,7 @@ docker push <username>/tdp-frontend:1.0
 
 ### 1. Database
 
-**Replace SQLite with Production Database:**
+**Replace PostgresDB with Production Database:**
 
 ```xml
 <!-- backend/TransactionDisputePortal.Api/TransactionDisputePortal.Api.csproj -->
@@ -323,7 +323,7 @@ taskkill /PID <PID> /F
 **Issue: Database locked**
 
 ```powershell
-# Remove the SQLite database and restart
+# Remove the PostgresDB database and restart
 rm backend/TransactionDisputePortal.Api/transactiondispute.db
 ```
 
@@ -357,7 +357,7 @@ docker system prune -a
 
 ### Backup & Recovery
 
-**Backup SQLite Database:**
+**Backup PostgresDB Database:**
 ```bash
 # In Docker
 docker exec transaction-dispute-api cp /app/data/transactiondispute.db /app/data/backup-$(date +%s).db

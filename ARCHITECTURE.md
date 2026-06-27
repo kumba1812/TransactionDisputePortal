@@ -51,7 +51,7 @@
 					 │ SQL Queries
 					 │
 ┌────────────────────▼────────────────────────────────────────┐
-│              Database Layer (SQLite)                         │
+│              Database Layer (PostgresDB)                         │
 │           (transactiondispute.db)                            │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Tables:                                             │   │
@@ -111,7 +111,7 @@ User Action → Component Event → API Call → Backend Response → State Upda
 ### Technology Stack
 - **Framework**: ASP.NET Core 10.0
 - **ORM**: Entity Framework Core 10.0.9
-- **Database**: SQLite (Development)
+- **Database**: PostgresDB (Development)
 - **Dependency Injection**: Built-in .NET DI
 
 ### Layered Architecture
@@ -133,7 +133,7 @@ User Action → Component Event → API Call → Backend Response → State Upda
 └──────────────┬──────────────────────┘
 			   │
 ┌──────────────▼──────────────────────┐
-│     SQLite Database                 │
+│     PostgresDB Database                 │
 │  Persistent data storage            │
 └─────────────────────────────────────┘
 ```
@@ -337,7 +337,7 @@ Content-Type: application/json
 │  └──────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────┐  │
 │  │  Shared Volume: db-data              │  │
-│  │  SQLite database persistence         │  │
+│  │  PostgresDB database persistence         │  │
 │  └──────────────────────────────────────┘  │
 └────────────────────────────────────────────┘
 ```
@@ -351,7 +351,7 @@ External Network
 	 │
 	 └─→ http://localhost:5115 (Backend API)
 		   │
-		   └─→ SQLite Database
+		   └─→ PostgresDB Database
 ```
 
 ---
@@ -458,7 +458,7 @@ GET /api/health → {"status": "healthy"}
 |----------|-----------|
 | React Hooks | Modern, functional approach; no class complexity |
 | EF Core | Strongly-typed database access; migration support |
-| SQLite (Dev) | Zero-setup, self-contained; easy for development |
+| PostgresDB (Dev) | Zero-setup, self-contained; easy for development |
 | Repository Pattern | Testability; abstracts data access |
 | Layered Architecture | Separation of concerns; maintainability |
 | Docker | Environment consistency; easy deployment |
@@ -471,7 +471,7 @@ GET /api/health → {"status": "healthy"}
 
 ### Development
 - Local machine
-- SQLite database
+- PostgresDB database
 - Hot reload enabled
 - Verbose logging
 

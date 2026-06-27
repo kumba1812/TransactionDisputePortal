@@ -23,7 +23,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# Create data directory for SQLite
+# Create data directory for PostgresDB
 RUN mkdir -p /app/data
 
 # Expose port

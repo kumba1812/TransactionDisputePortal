@@ -108,7 +108,7 @@ This will:
 - Build the frontend React image
 - Start both services in containers
 - Create a shared network for communication
-- Initialize the SQLite database
+- Initialize the PostgresDB database
 
 Access the application:
 - Frontend: http://localhost:5173
@@ -208,7 +208,7 @@ curl -X POST http://localhost:5115/api/disputes `
 
 ## 🗄️ Database
 
-The application uses SQLite for data persistence:
+The application uses PostgresDB for data persistence:
 - **Local**: `transactiondispute.db` in the application directory
 - **Docker**: Stored in a named volume `db-data` for persistence across container restarts
 
@@ -241,7 +241,7 @@ VITE_API_URL=http://localhost:5115/api
 
 ### Recommendations for Production:
 
-1. **Database**: Replace SQLite with SQL Server or PostgreSQL
+1. **Database**: Replace PostgresDB with SQL Server or PostgreSQL
 2. **Authentication**: Implement JWT token-based authentication
 3. **SSL/TLS**: Use HTTPS in production
 4. **Environment Variables**: Store sensitive data in secure configuration

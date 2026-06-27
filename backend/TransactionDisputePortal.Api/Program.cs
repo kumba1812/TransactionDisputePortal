@@ -14,7 +14,7 @@ builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 
-// Configure DbContext: support SQLite by default, Postgres when connection string indicates
+// Configure DbContext: support by default, Postgres when connection string indicates
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrWhiteSpace(conn) && conn.Contains("Host=", StringComparison.OrdinalIgnoreCase))
 {
@@ -23,8 +23,8 @@ if (!string.IsNullOrWhiteSpace(conn) && conn.Contains("Host=", StringComparison.
 }
 else
 {
-    // Fallback to SQLite file-based database
-    builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlite(conn ?? "Data Source=transactiondispute.db"));
+    // Log Error no database configured
+    Console.WriteLine("No valid database connection string found.");
 }
 
 // CORS: allow frontend origins in Development, restrict in Production

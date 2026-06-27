@@ -60,7 +60,7 @@
 - [x] .NET 10 (Latest)
 - [x] ASP.NET Core Web API
 - [x] Entity Framework Core 10.0.9
-- [x] SQLite database (development)
+- [x] PostgresDB database (development)
 - [x] Built-in dependency injection
 
 ### Frontend  
@@ -213,7 +213,7 @@
 
 ### Data Access
 - [x] Entity Framework Core configured
-- [x] SQLite database (swappable)
+- [x] PostgresDB database (swappable)
 - [x] Repository pattern implementation
 - [x] Proper indexing strategy
 - [x] Sample data seeding

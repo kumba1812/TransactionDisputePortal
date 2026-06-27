@@ -13,7 +13,7 @@ The Capitec Transaction Dispute Portal has been successfully developed as a prod
 
 ### Backend (.NET 10)
 - ✅ RESTful API with ASP.NET Core
-- ✅ Entity Framework Core with SQLite
+- ✅ Entity Framework Core with PostgresDB
 - ✅ Repository pattern for data access
 - ✅ CORS configuration for frontend integration
 - ✅ Health check endpoint
@@ -113,7 +113,7 @@ API Gateway (ASP.NET Core)
 	↓
 Repository Layer (Data Access)
 	↓
-Database (SQLite/SQL Server)
+Database (PostgresDB/SQL Server)
 ```
 
 ### Design Patterns
@@ -134,7 +134,7 @@ Database (SQLite/SQL Server)
 | **Backend** | .NET | 10.0 |
 | | ASP.NET Core | 10.0 |
 | | Entity Framework Core | 10.0.9 |
-| **Database** | SQLite | Latest |
+| **Database** | PostgresDB | Latest |
 | **Deployment** | Docker | Latest |
 | **Container Orchestration** | Docker Compose | Latest |
 
@@ -305,7 +305,7 @@ docs: Add comprehensive documentation for deployment, testing, and architecture
 ## 🚀 Next Steps for Production
 
 1. **Database Migration**
-   - Switch from SQLite to SQL Server or PostgreSQL
+   - Switch from PostgresDB to SQL Server or PostgreSQL
    - Set up database backups
 
 2. **Authentication**
