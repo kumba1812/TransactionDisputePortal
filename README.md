@@ -220,13 +220,6 @@ The application uses PostgresDB for data persistence:
 
 The database is automatically created and seeded with sample data on first run through Entity Framework Core migrations.
 
-## 🔒 Security Considerations
-
-- **CORS**: Configured to allow frontend on localhost:5173
-- **Authentication**: Currently uses hardcoded customer ID (1) for demo. In production, implement JWT authentication
-- **Input Validation**: All endpoints validate input parameters
-- **Error Handling**: Proper HTTP status codes and error messages
-
 ## 📝 Environment Variables
 
 ### Backend
@@ -241,61 +234,9 @@ ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=transactio
 VITE_API_URL=http://localhost:5115/api
 ```
 
-## 🚢 Production Deployment
-
-### Recommendations for Production:
-
-1. **Database**: Replace PostgresDB with SQL Server or PostgreSQL
-2. **Authentication**: JWT already implemented; rotate `Jwt__Key` secret in production
-3. **SSL/TLS**: Use HTTPS in production
-4. **Environment Variables**: Store sensitive data in secure configuration
-5. **Logging**: Implement comprehensive logging and monitoring
-6. **API Rate Limiting**: Add rate limiting to prevent abuse
-7. **CORS**: Configure CORS for production domain
-
-### Docker Production Build
-
-```bash
-docker-compose -f docker-compose.yml up -d
-```
-
-## 📦 Build & Release
-
-### Frontend Build
-```powershell
-cd frontend/TransactionDisputePortal.Web
-npm run build
-```
-
-Output: `dist/` directory
-
-### Backend Build
-```powershell
-cd backend/TransactionDisputePortal.Api
-dotnet publish -c Release -o ./publish
-```
-
-Output: `publish/` directory
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## 👤 Author
 
-- **Maphandike Mtinyane** - [GitHub](https://github.com/kumba1812)
-
-## 📞 Support
-
-For support, email support@transactiondisputeportal.com or open an issue on GitHub.
+- **Lawrence Maphala** - [GitHub](https://github.com/kumba1812)
 
 ## 🔄 Deployment Instructions
 
@@ -309,33 +250,3 @@ For support, email support@transactiondisputeportal.com or open an issue on GitH
 2. Run `docker-compose up --build` from root directory
 3. Frontend: http://localhost:5173
 4. Backend: http://localhost:5115
-
-### Troubleshooting
-
-**Port Already in Use:**
-```powershell
-# Find process using port 5115
-netstat -ano | findstr :5115
-
-# Kill the process
-taskkill /PID <PID> /F
-```
-
-**Database Issues:**
-```powershell
-# Delete database and let it recreate
-rm transactiondispute.db
-dotnet run
-```
-
-**CORS Errors:**
-Check frontend is running on http://localhost:5173 and backend CORS policy includes that URL.
-
-## 📚 Additional Resources
-
-- [.NET 10 Documentation](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10)
-- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/)
-- [React Documentation](https://react.dev/)
-- [Vite Documentation](https://vite.dev/)
-- [Docker Documentation](https://docs.docker.com/)
-
