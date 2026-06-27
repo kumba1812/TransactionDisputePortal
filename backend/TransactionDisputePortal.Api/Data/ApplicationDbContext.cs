@@ -1,3 +1,4 @@
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Models;
 
@@ -11,6 +12,7 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Transaction> Transactions { get; set; }
     public DbSet<Dispute> Disputes { get; set; }
+    public DbSet<ApplicationUser> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,93 +38,121 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Reason).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
             entity.Property(e => e.ResolutionNotes).HasMaxLength(1000);
+            entity.Property(e => e.LockedByName).HasMaxLength(200);
         });
 
-        // Seed sample data
+        // User configuration
+        modelBuilder.Entity<ApplicationUser>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.FullName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
+        });
+
         SeedSampleData(modelBuilder);
     }
 
     private void SeedSampleData(ModelBuilder modelBuilder)
     {
+        // Seed users â€” passwords hashed with ASP.NET Identity PasswordHasher
+        var hasher = new PasswordHasher<ApplicationUser>();
+        var seedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var adminUser    = new ApplicationUser { Id = 1, Username = "admin",   FullName = "Admin User",    Role = "Admin",    IsActive = true, CreatedAt = seedDate };
+        var bankerUser   = new ApplicationUser { Id = 2, Username = "banker",  FullName = "Banker One",    Role = "Banker",   IsActive = true, CreatedAt = seedDate };
+        var banker2User  = new ApplicationUser { Id = 3, Username = "banker2", FullName = "Banker Two",    Role = "Banker",   IsActive = true, CreatedAt = seedDate };
+        var clientUser   = new ApplicationUser { Id = 4, Username = "client",  FullName = "Client User",   Role = "Client",   IsActive = true, CreatedAt = seedDate };
+        var readonlyUser = new ApplicationUser { Id = 5, Username = "readonly", FullName = "ReadOnly User", Role = "ReadOnly", IsActive = true, CreatedAt = seedDate };
+
+        adminUser.PasswordHash    = hasher.HashPassword(adminUser,    "Admin123!");
+        bankerUser.PasswordHash   = hasher.HashPassword(bankerUser,   "Banker123!");
+        banker2User.PasswordHash  = hasher.HashPassword(banker2User,  "Banker2123!");
+        clientUser.PasswordHash   = hasher.HashPassword(clientUser,   "Client123!");
+        readonlyUser.PasswordHash = hasher.HashPassword(readonlyUser, "Readonly123!");
+
+        modelBuilder.Entity<ApplicationUser>().HasData(adminUser, bankerUser, banker2User, clientUser, readonlyUser);
+
         var transactions = new List<Transaction>
         {
             new()
             {
                 Id = 1,
-                CustomerId = 1,
+                CustomerId = 4, // client user id
                 TransactionId = "TXN20260604001",
                 Amount = 1250.50m,
                 Description = "ATM Withdrawal",
-                TransactionDate = DateTime.UtcNow.AddDays(-10),
+                TransactionDate = new DateTime(2026, 6, 17, 0, 0, 0, DateTimeKind.Utc),
                 Merchant = "FNB ATM - Sandton",
                 Category = "ATM Withdrawal",
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow.AddDays(-10)
+                CreatedAt = new DateTime(2026, 6, 17, 0, 0, 0, DateTimeKind.Utc)
             },
             new()
             {
                 Id = 2,
-                CustomerId = 1,
+                CustomerId = 4,
                 TransactionId = "TXN20260609002",
                 Amount = 899.99m,
                 Description = "Monthly Insurance Premium",
-                TransactionDate = DateTime.UtcNow.AddDays(-5),
+                TransactionDate = new DateTime(2026, 6, 22, 0, 0, 0, DateTimeKind.Utc),
                 Merchant = "Old Mutual Insurance",
                 Category = "Insurance",
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow.AddDays(-5)
+                CreatedAt = new DateTime(2026, 6, 22, 0, 0, 0, DateTimeKind.Utc)
             },
             new()
             {
                 Id = 3,
-                CustomerId = 1,
+                CustomerId = 4,
                 TransactionId = "TXN20260612003",
                 Amount = 450.00m,
                 Description = "Utility Payment",
-                TransactionDate = DateTime.UtcNow.AddDays(-2),
+                TransactionDate = new DateTime(2026, 6, 25, 0, 0, 0, DateTimeKind.Utc),
                 Merchant = "Eskom - Electricity",
                 Category = "Utilities",
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow.AddDays(-2)
+                CreatedAt = new DateTime(2026, 6, 25, 0, 0, 0, DateTimeKind.Utc)
             },
             new()
             {
                 Id = 4,
-                CustomerId = 1,
+                CustomerId = 4,
                 TransactionId = "TXN20260520004",
                 Amount = 2000.00m,
                 Description = "International Wire Transfer",
-                TransactionDate = DateTime.UtcNow.AddDays(-25),
+                TransactionDate = new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc),
                 Merchant = "Standard Chartered Bank - USA",
                 Category = "Wire Transfer",
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow.AddDays(-25)
+                CreatedAt = new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc)
             },
             new()
             {
                 Id = 5,
-                CustomerId = 1,
+                CustomerId = 4,
                 TransactionId = "TXN20260614005",
                 Amount = 325.50m,
                 Description = "Card Purchase",
-                TransactionDate = DateTime.UtcNow.AddDays(-1),
+                TransactionDate = new DateTime(2026, 6, 26, 0, 0, 0, DateTimeKind.Utc),
                 Merchant = "Pick n Pay - Westgate",
                 Category = "Retail",
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow.AddDays(-1)
+                CreatedAt = new DateTime(2026, 6, 26, 0, 0, 0, DateTimeKind.Utc)
             },
             new()
             {
                 Id = 6,
-                CustomerId = 1,
+                CustomerId = 4,
                 TransactionId = "TXN20260615006",
                 Amount = 150.00m,
                 Description = "Mobile Top-Up",
-                TransactionDate = DateTime.UtcNow,
+                TransactionDate = new DateTime(2026, 6, 27, 0, 0, 0, DateTimeKind.Utc),
                 Merchant = "Vodacom South Africa",
                 Category = "Mobile Services",
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2026, 6, 27, 0, 0, 0, DateTimeKind.Utc)
             }
         };
 
@@ -135,11 +165,11 @@ public class ApplicationDbContext : DbContext
                 Id = 1,
                 TransactionId = 1,
                 TransactionIdFk = 1,
-                CustomerId = 1,
+                CustomerId = 4,
                 Reason = "Unauthorized",
                 Description = "I did not authorize this ATM withdrawal",
                 Status = DisputeStatus.UnderReview,
-                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                CreatedAt = new DateTime(2026, 6, 24, 0, 0, 0, DateTimeKind.Utc),
                 RefundAmount = 1250.50m
             },
             new()
@@ -147,12 +177,12 @@ public class ApplicationDbContext : DbContext
                 Id = 2,
                 TransactionId = 4,
                 TransactionIdFk = 4,
-                CustomerId = 1,
+                CustomerId = 4,
                 Reason = "Incorrect Amount",
                 Description = "Wire transfer was charged twice",
                 Status = DisputeStatus.Resolved,
-                CreatedAt = DateTime.UtcNow.AddDays(-20),
-                ResolvedAt = DateTime.UtcNow.AddDays(-15),
+                CreatedAt = new DateTime(2026, 6, 7, 0, 0, 0, DateTimeKind.Utc),
+                ResolvedAt = new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc),
                 ResolutionNotes = "Duplicate charge refunded to account",
                 RefundAmount = 2000.00m
             }

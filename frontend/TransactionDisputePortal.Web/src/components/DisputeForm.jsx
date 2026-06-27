@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { disputeApi } from '../services/api';
-import { formatCurrency, formatDate } from '../utils/statusHelpers';
+import { formatCurrency, formatDate, getStatusLabel } from '../utils/statusHelpers';
+
+const DISPUTE_LABEL = { pending: 'Pending', underreview: 'Under Review', resolved: 'Resolved', refunded: 'Refunded', rejected: 'Rejected' };
+import { useAuth } from '../context/AuthContext';
 import '../styles/DisputeForm.css';
 
 export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     reason: '',
     description: '',
@@ -86,7 +90,10 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
   return (
     <div className="dispute-form-container">
       <div className="form-header">
-        <h2>Dispute Transaction</h2>
+        <div>
+          <h2>Dispute Transaction</h2>
+          {user && <p className="filing-as">Filing as: <strong>{user.fullName}</strong></p>}
+        </div>
         <button className="close-btn" onClick={onCancel}>×</button>
       </div>
 
@@ -113,59 +120,85 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
         </div>
       </div>
 
-      {hasPendingDispute && (
-        <div className="warning">
-          <strong>⚠️ Alert:</strong> This transaction already has an active dispute. You cannot create a duplicate dispute.
-        </div>
-      )}
+      {hasPendingDispute && existingDisputes.map(d => {
+        const statusKey = getStatusLabel(d.status);
+        return (
+          <div key={d.id} className="existing-dispute-card">
+            <div className="existing-dispute-header">
+              <span className="existing-dispute-title">⚠️ Active Dispute</span>
+              <span className={`dispute-status-badge dispute-status-${statusKey}`}>
+                {DISPUTE_LABEL[statusKey] ?? statusKey}
+              </span>
+            </div>
+            <div className="existing-dispute-body">
+              <div className="existing-dispute-row">
+                <span className="existing-dispute-label">Reason</span>
+                <span className="existing-dispute-value">{d.reason}</span>
+              </div>
+              <div className="existing-dispute-row">
+                <span className="existing-dispute-label">Filed</span>
+                <span className="existing-dispute-value">{formatDate(d.createdAt)}</span>
+              </div>
+              {d.resolutionNotes && (
+                <div className="existing-dispute-row">
+                  <span className="existing-dispute-label">Resolution</span>
+                  <span className="existing-dispute-value">{d.resolutionNotes}</span>
+                </div>
+              )}
+            </div>
+            <p className="existing-dispute-note">You cannot file a duplicate dispute for this transaction.</p>
+          </div>
+        );
+      })}
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="reason">Reason for Dispute *</label>
-          <select
-            id="reason"
-            name="reason"
-            value={formData.reason}
-            onChange={handleChange}
-            disabled={loading || hasPendingDispute}
-            required
-          >
-            <option value="">Select a reason...</option>
-            {bankingReasons.map(reason => (
-              <option key={reason} value={reason}>{reason}</option>
-            ))}
-          </select>
-        </div>
+      {!hasPendingDispute && (
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="reason">Reason for Dispute *</label>
+            <select
+              id="reason"
+              name="reason"
+              value={formData.reason}
+              onChange={handleChange}
+              disabled={loading}
+              required
+            >
+              <option value="">Select a reason...</option>
+              {bankingReasons.map(reason => (
+                <option key={reason} value={reason}>{reason}</option>
+              ))}
+            </select>
+          </div>
 
-        <div className="form-group">
-          <label htmlFor="description">Description of Dispute *</label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Please provide detailed information about your dispute. Include any relevant dates, amounts, or reference numbers..."
-            disabled={loading || hasPendingDispute}
-            required
-            rows="6"
-            minLength="10"
-          />
-          <small className="char-count">{formData.description.length} characters (minimum 10)</small>
-        </div>
+          <div className="form-group">
+            <label htmlFor="description">Description of Dispute *</label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Please provide detailed information about your dispute. Include any relevant dates, amounts, or reference numbers..."
+              disabled={loading}
+              required
+              rows="6"
+              minLength="10"
+            />
+            <small className="char-count">{formData.description.length} characters (minimum 10)</small>
+          </div>
 
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">✓ Dispute created successfully! Redirecting...</div>}
+          {error && <div className="error-message">{error}</div>}
+          {success && <div className="success-message">✓ Dispute created successfully! Redirecting...</div>}
 
-        <div className="form-actions">
-          <button 
-            type="button" 
-            className="cancel-btn"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button 
+          <div className="form-actions">
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
             type="submit" 
             className="submit-btn"
             disabled={loading || hasPendingDispute}
@@ -174,6 +207,15 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
           </button>
         </div>
       </form>
+      )}
+
+      {hasPendingDispute && (
+        <div className="form-actions">
+          <button type="button" className="cancel-btn" onClick={onCancel}>
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 }

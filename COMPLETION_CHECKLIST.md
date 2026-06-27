@@ -1,4 +1,4 @@
-# ✅ Capitec Transaction Dispute Portal - Completion Checklist
+﻿# ✅ Capitec Transaction Dispute Portal - Completion Checklist
 
 ## Project Status: ✅ COMPLETE & PRODUCTION-READY
 
@@ -41,11 +41,15 @@
   - Component-based UI architecture
 
 - [x] Security considerations
+  - JWT Bearer authentication (HS256, 24h expiry)
+  - Role-based access control (Admin / Banker / Client / ReadOnly)
   - Input validation on all endpoints
   - SQL injection prevention (EF Core parameterized queries)
   - XSS prevention (React auto-escaping)
   - CORS configuration
   - Error messages without sensitive information
+  - sessionStorage (never localStorage) — cleared on logout and 401
+  - 5-minute inactivity auto-logout
 
 - [x] Code organization
   - Backend: Controllers, Models, Repositories, Data folder
@@ -59,16 +63,24 @@
 ### Backend
 - [x] .NET 10 (Latest)
 - [x] ASP.NET Core Web API
-- [x] Entity Framework Core 10.0.9
-- [x] PostgresDB database (development)
+- [x] Entity Framework Core 10.0.9 (Npgsql provider)
+- [x] PostgreSQL 15 database (Docker)
+- [x] JWT Bearer authentication (Microsoft.AspNetCore.Authentication.JwtBearer 10.0.0)
+- [x] PBKDF2 password hashing (PasswordHasher<T>)
+- [x] Role-based access control (Admin / Banker / Client / ReadOnly)
+- [x] Dispute soft-lock mechanism (concurrent editor detection)
 - [x] Built-in dependency injection
+- [x] xUnit 2.9.3 — 69 unit tests, 0 failures
 
 ### Frontend  
 - [x] React 19.2.6 (Latest)
 - [x] Vite 8.0.12 (Fast build tool)
-- [x] Axios 1.7.2 (HTTP client)
+- [x] Axios 1.7.2 (HTTP client with Bearer interceptor + 401 handler)
+- [x] AuthContext with JWT + sessionStorage
+- [x] 5-minute inactivity auto-logout
 - [x] CSS3 (Responsive design)
-- [x] React Hooks (Modern approach)
+- [x] React Hooks (useState, useEffect, useContext, useRef, useCallback)
+- [x] Vitest 4.1.9 + React Testing Library — 41 tests, 0 failures
 
 ### Deployment
 - [x] Docker for backend
@@ -152,15 +164,20 @@
 ### Backend API (12+ Endpoints)
 - [x] `GET /api/transactions` - List all transactions
 - [x] `GET /api/transactions/{id}` - Get specific transaction
-- [x] `POST /api/transactions` - Create transaction
-- [x] `PUT /api/transactions/{id}` - Update transaction
-- [x] `DELETE /api/transactions/{id}` - Delete transaction
-- [x] `GET /api/disputes` - List all disputes
+- [x] `POST /api/auth/login` - Authenticate, receive JWT
+- [x] `GET /api/transactions` - List transactions (role-filtered)
+- [x] `GET /api/transactions/{id}` - Get specific transaction
+- [x] `POST /api/transactions` - Create transaction (Admin/Banker)
+- [x] `PUT /api/transactions/{id}` - Update transaction (Admin/Banker)
+- [x] `DELETE /api/transactions/{id}` - Delete transaction (Admin)
+- [x] `GET /api/disputes` - List disputes (role-filtered)
 - [x] `GET /api/disputes/{id}` - Get specific dispute
 - [x] `GET /api/disputes/transaction/{id}` - Get disputes for transaction
-- [x] `POST /api/disputes` - Create dispute
-- [x] `PUT /api/disputes/{id}` - Update dispute
-- [x] `DELETE /api/disputes/{id}` - Delete dispute
+- [x] `POST /api/disputes` - Create dispute (Client)
+- [x] `PUT /api/disputes/{id}` - Update dispute status (Banker/Admin)
+- [x] `DELETE /api/disputes/{id}` - Delete dispute (Admin)
+- [x] `POST /api/disputes/{id}/lock` - Acquire soft lock (Banker)
+- [x] `DELETE /api/disputes/{id}/lock` - Release soft lock (Banker)
 - [x] `GET /api/health` - Health check
 
 ### Frontend Components
@@ -171,18 +188,24 @@
 
 - [x] **TransactionsList Component**
   - Display all transactions in table format
+  - Dispute status badge per row (parallel fetch with disputes)
   - Refresh button
   - Dispute action button
   - Loading and error states
-  - Transaction details display
+  - Transaction details display (Category column removed)
 
 - [x] **DisputeForm Component**
+  - Existing dispute status card (shows when dispute already filed)
+  - Form hidden (not just disabled) when active dispute exists
   - Transaction details display
   - Reason dropdown (6 options)
   - Description textarea
   - Form validation
   - Success/error messages
   - Submit/Cancel buttons
+- [x] **LoginPage Component** — JWT login form with error handling
+- [x] **DisputeStatusModal Component** — Banker/Admin status + resolution editor
+- [x] **AuthContext** — JWT provider, sessionStorage, inactivity timeout
 
 - [x] **DisputeHistory Component**
   - Grid display of disputes
@@ -200,23 +223,28 @@
 - [x] CORS support
 - [x] Health checks
 - [x] Database migrations
+- [x] JWT authentication + RBAC (role-based access)
+- [x] Dispute soft-lock for concurrent editor safety
+- [x] 5-minute inactivity auto-logout
+- [x] Dispute status visible to clients (badge + detail card)
 
 ---
 
 ## 📊 Database Design
 
 ### Entities
+- [x] Users entity (Id, Username, PasswordHash, FullName, Role, IsActive)
 - [x] Transaction entity with all required fields
-- [x] Dispute entity with all required fields
+- [x] Dispute entity with all required fields + lock fields
 - [x] Proper relationships (1:N)
 - [x] Enums for status values
 
 ### Data Access
-- [x] Entity Framework Core configured
-- [x] PostgresDB database (swappable)
+- [x] Entity Framework Core configured (Npgsql, snake_case column mapping)
+- [x] PostgreSQL 15 database (Docker pgdata volume)
 - [x] Repository pattern implementation
 - [x] Proper indexing strategy
-- [x] Sample data seeding
+- [x] Sample data seeding (seed.sql with __EFMigrationsHistory + sequence resets)
 
 ---
 
@@ -258,8 +286,11 @@
 
 ### Test Infrastructure
 - [x] API testing file (API_TESTING.http)
-- [x] Unit testing examples provided
-- [x] Integration testing examples provided
+- [x] Backend: xUnit 2.9.3 + Moq 4.20.72 + EF Core InMemory — **69 tests passing**
+- [x] Frontend: Vitest 4.1.9 + React Testing Library — **41 tests passing**
+- [x] Auth controller tests (JWT, role access, 401/403 boundaries)
+- [x] Dispute lock tests (acquire, release, conflict, expiry)
+- [x] sessionStorage tests (cleared on 401 and inactivity)
 - [x] E2E testing guide with Playwright
 - [x] Performance testing strategies
 - [x] Security testing guidelines
@@ -277,7 +308,7 @@
 
 ### Docker Deployment
 - [x] Single command deployment (`docker-compose up`)
-- [x] Automatic database initialization
+- [x] Automatic database initialization via seed.sql (schema + data + sequence resets)
 - [x] Health checks for both services
 - [x] Network isolation
 - [x] Volume persistence
@@ -325,6 +356,11 @@
 
 ## 🔒 Security & Best Practices
 
+- [x] JWT Bearer authentication (HS256, 24h expiry)
+- [x] Role-based authorization (Admin / Banker / Client / ReadOnly)
+- [x] PBKDF2 password hashing (PasswordHasher<T>)
+- [x] sessionStorage — token never persisted to localStorage
+- [x] 5-minute inactivity auto-logout
 - [x] Input validation
 - [x] SQL injection prevention
 - [x] XSS prevention
@@ -333,8 +369,6 @@
 - [x] Proper HTTP status codes
 - [x] Data validation on frontend and backend
 - [x] Security headers recommendations
-- [x] Authentication setup guide
-- [x] Authorization setup guide
 
 ---
 
@@ -516,7 +550,7 @@ This project demonstrates:
 
 ---
 
-**Completion Date**: January 2024  
+**Completion Date**: June 2026  
 **Time Invested**: Professional-grade development  
 **Quality Level**: Production-Ready  
 

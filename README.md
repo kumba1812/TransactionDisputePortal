@@ -1,4 +1,4 @@
-# Capitec Transaction Dispute Portal
+﻿# Capitec Transaction Dispute Portal
 
 A full-stack web application for managing transaction disputes. Built with .NET 10 (backend API) and React + Vite (frontend), allowing customers to view transactions, file disputes, and track dispute history.
 
@@ -23,6 +23,8 @@ TransactionDisputePortal/
 │   │   ├── Repositories/         # Data access layer
 │   │   ├── Program.cs            # Application setup
 │   │   └── TransactionDisputePortal.Api.csproj
+│   ├── TransactionDisputePortal.Api.Tests/  # xUnit tests
+│   │   └── Helpers/              # ControllerTestHelper
 │   └── Dockerfile
 ├── frontend/
 │   ├── TransactionDisputePortal.Web/
@@ -34,6 +36,8 @@ TransactionDisputePortal/
 │   │   │   └── main.jsx
 │   │   ├── package.json
 │   │   └── vite.config.js
+│   ├── TransactionDisputePortal.Api.Tests/  # xUnit tests
+│   │   └── Helpers/              # ControllerTestHelper
 │   └── Dockerfile
 ├── docker-compose.yml
 └── README.md
@@ -229,7 +233,7 @@ The database is automatically created and seeded with sample data on first run t
 ```
 ASPNETCORE_ENVIRONMENT=Development|Production
 ASPNETCORE_URLS=http://+:5115
-ConnectionStrings__DefaultConnection=Data Source=transactiondispute.db
+ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=transactiondispute;Username=postgres;Password=postgres
 ```
 
 ### Frontend
@@ -242,7 +246,7 @@ VITE_API_URL=http://localhost:5115/api
 ### Recommendations for Production:
 
 1. **Database**: Replace PostgresDB with SQL Server or PostgreSQL
-2. **Authentication**: Implement JWT token-based authentication
+2. **Authentication**: JWT already implemented; rotate `Jwt__Key` secret in production
 3. **SSL/TLS**: Use HTTPS in production
 4. **Environment Variables**: Store sensitive data in secure configuration
 5. **Logging**: Implement comprehensive logging and monitoring

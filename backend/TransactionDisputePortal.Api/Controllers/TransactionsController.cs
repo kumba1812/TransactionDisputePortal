@@ -1,3 +1,4 @@
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TransactionDisputePortal.Api.Dtos;
@@ -8,6 +9,7 @@ namespace TransactionDisputePortal.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TransactionsController : ControllerBase
 {
     private readonly ITransactionRepository _repository;
@@ -19,6 +21,8 @@ public class TransactionsController : ControllerBase
         return -1;
     }
 
+    private bool IsClient() => User.IsInRole("Client");
+
     public TransactionsController(ITransactionRepository repository)
     {
         _repository = repository;
@@ -27,10 +31,19 @@ public class TransactionsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetTransactions()
     {
-        var userId = GetUserId();
-        if (userId <= 0) return Unauthorized();
+        IEnumerable<Transaction> transactions;
 
-        var transactions = await _repository.GetByCustomerIdAsync(userId);
+        if (IsClient())
+        {
+            var userId = GetUserId();
+            if (userId <= 0) return Unauthorized();
+            transactions = await _repository.GetByCustomerIdAsync(userId);
+        }
+        else
+        {
+            transactions = await _repository.GetAllAsync();
+        }
+
         var result = transactions.Select(t => new TransactionDto(t)).ToList();
         return Ok(result);
     }
@@ -42,11 +55,14 @@ public class TransactionsController : ControllerBase
         if (transaction == null)
             return NotFound(new { message = "Transaction not found" });
 
-        var result = new TransactionDto(transaction);
-        return Ok(result);
+        if (IsClient() && transaction.CustomerId != GetUserId())
+            return Forbid();
+
+        return Ok(new TransactionDto(transaction));
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateTransaction([FromBody] CreateTransactionRequest request)
     {
         if (!ModelState.IsValid)
@@ -72,6 +88,7 @@ public class TransactionsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateTransaction(int id, [FromBody] UpdateTransactionRequest request)
     {
         var transaction = await _repository.GetByIdAsync(id);
@@ -86,6 +103,7 @@ public class TransactionsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteTransaction(int id)
     {
         var transaction = await _repository.GetByIdAsync(id);

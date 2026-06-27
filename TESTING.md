@@ -1,497 +1,377 @@
-# Testing Guide - Capitec Transaction Dispute Portal
+﻿# Testing Guide - Capitec Transaction Dispute Portal
 
 ## Overview
 
-This guide covers testing strategies and procedures for the Capitec Transaction Dispute Portal.
+This guide covers the actual test setup and strategies for the Capitec Transaction Dispute Portal.
+**Current status: 69 backend tests + 41 frontend tests — 0 failures.**
 
 ## Table of Contents
 
-1. [Unit Testing](#unit-testing)
-2. [Integration Testing](#integration-testing)
-3. [API Testing](#api-testing)
-4. [Frontend Testing](#frontend-testing)
-5. [Performance Testing](#performance-testing)
-6. [Security Testing](#security-testing)
+1. [Running Tests](#running-tests)
+2. [Backend Tests](#backend-tests)
+3. [Frontend Tests](#frontend-tests)
+4. [API Testing](#api-testing)
+5. [Security Testing](#security-testing)
+6. [CI/CD](#cicd)
 
 ---
 
-## Unit Testing
+## Running Tests
 
-### Backend Unit Tests
-
-Create test files in a test project:
-
-```bash
-mkdir backend/TransactionDisputePortal.Api.Tests
+### Backend (xUnit)
+```powershell
 cd backend/TransactionDisputePortal.Api.Tests
-dotnet new xunit
+dotnet test
 ```
 
-Update csproj:
-```xml
-<ItemGroup>
-  <PackageReference Include="xunit" Version="2.6.2" />
-  <PackageReference Include="xunit.runner.visualstudio" Version="2.5.1" />
-  <PackageReference Include="Moq" Version="4.20.69" />
-  <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.9" />
-</ItemGroup>
+### Frontend (Vitest)
+```powershell
+cd frontend/TransactionDisputePortal.Web
+npm run test:run        # single run
+npm run test            # watch mode
 ```
 
-Example test:
+---
+
+## Backend Tests
+
+### Stack
+| Package | Version | Purpose |
+|---|---|---|
+| xUnit | 2.9.3 | Test framework |
+| Moq | 4.20.72 | Mocking |
+| EF Core InMemory | 10.0.9 | In-memory DB for repositories |
+| Microsoft.Extensions.Configuration | (shared) | IConfiguration mock support |
+
+### Key Pattern — Fresh InMemory Context
+
+Each test creates an isolated DB to avoid seed-data conflicts:
+
 ```csharp
-using Xunit;
-using Moq;
-using TransactionDisputePortal.Api.Repositories;
-using TransactionDisputePortal.Api.Models;
-
-public class DisputeRepositoryTests
+private static ApplicationDbContext CreateFreshContext()
 {
-	[Fact]
-	public async Task GetByCustomerIdAsync_ReturnsDisputes_WhenFound()
-	{
-		// Arrange
-		var mockContext = new Mock<ApplicationDbContext>();
-		var repository = new DisputeRepository(mockContext.Object);
-
-		// Act
-		var result = await repository.GetByCustomerIdAsync(1);
-
-		// Assert
-		Assert.NotNull(result);
-	}
-
-	[Fact]
-	public async Task CreateDispute_AddsDisputeToContext()
-	{
-		// Arrange
-		var dispute = new Dispute 
-		{ 
-			CustomerId = 1, 
-			Reason = "Unauthorized" 
-		};
-
-		// Act & Assert
-		// Test implementation
-	}
+    var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString())
+        .Options;
+    return new ApplicationDbContext(options);
 }
 ```
 
-### Frontend Unit Tests
+> ⚠️ Do **not** call `EnsureCreated()` — it runs `OnModelCreating` seed data which
+> conflicts with explicit IDs used in tests.
 
-```bash
-cd frontend/TransactionDisputePortal.Web
-npm install --save-dev vitest @testing-library/react @testing-library/jest-dom
+### Repository Tests (21 tests)
+
+#### UserRepositoryTests
+```csharp
+[Fact]
+public async Task GetByUsername_ReturnsNull_WhenInactive()
+{
+    await using var ctx = CreateFreshContext();
+    ctx.Users.Add(new ApplicationUser { Id = 1, Username = "alice",
+        PasswordHash = "x", FullName = "Alice", Role = "Client", IsActive = false });
+    await ctx.SaveChangesAsync();
+
+    var repo   = new UserRepository(ctx);
+    var result = await repo.GetByUsernameAsync("alice");
+
+    Assert.Null(result);
+}
 ```
 
-Example test:
-```javascript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { TransactionsList } from '../components/TransactionsList';
+#### DisputeRepositoryTests
+```csharp
+[Fact]
+public async Task UpdateLock_SetsLockFields()
+{
+    await using var ctx = CreateFreshContext();
+    var (_, d) = await SeedOneAsync(ctx);      // seeds Tx + Dispute
 
-describe('TransactionsList', () => {
-  it('renders loading state initially', () => {
-	render(<TransactionsList onSelectTransaction={() => {}} />);
-	expect(screen.getByText(/loading/i)).toBeInTheDocument();
-  });
+    var repo = new DisputeRepository(ctx);
+    var now  = DateTime.UtcNow;
+    await repo.UpdateLockAsync(d.Id, 2, "Banker One", now);
 
-  it('displays transactions when loaded', async () => {
-	// Mock API response
-	// Assert transactions are rendered
-  });
+    var updated = await ctx.Disputes.FindAsync(d.Id);
+    Assert.Equal(2,            updated!.LockedByUserId);
+    Assert.Equal("Banker One", updated.LockedByName);
+    Assert.Equal(now,          updated.LockedAt);
+}
+```
+
+### Controller Tests (45 tests)
+
+#### ControllerTestHelper — JWT claims injection
+
+```csharp
+// Helpers/ControllerTestHelper.cs
+public static void SetUser(ControllerBase controller,
+                           string role, int userId, string fullName)
+{
+    var claims = new[]
+    {
+        new Claim(ClaimTypes.Role,              role),
+        new Claim(ClaimTypes.NameIdentifier,    userId.ToString()),
+        new Claim("FullName",                   fullName),
+    };
+    controller.ControllerContext = new ControllerContext
+    {
+        HttpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
+        }
+    };
+}
+```
+
+#### AuthControllerTests
+```csharp
+[Fact]
+public async Task Login_ReturnsToken_ForAdminRole()
+{
+    var mockUserRepo = new Mock<IUserRepository>();
+    mockUserRepo.Setup(r => r.GetByUsernameAsync("admin"))
+                .ReturnsAsync(new ApplicationUser { Id = 1, Username = "admin",
+                    PasswordHash = _hasher.HashPassword(null!, "Admin123!"),
+                    FullName = "Admin User", Role = "Admin", IsActive = true });
+
+    var mockConfig = new Mock<IConfiguration>();
+    mockConfig.Setup(c => c["Jwt:Key"])    .Returns((string?)"TestKeyForUnitTests-MustBe32Chars!!");
+    mockConfig.Setup(c => c["Jwt:Issuer"]).Returns((string?)"TestIssuer");
+
+    var controller = new AuthController(mockUserRepo.Object, _hasher, mockConfig.Object);
+    var result     = await controller.Login(new LoginDto { Username = "admin", Password = "Admin123!" });
+
+    var ok = Assert.IsType<OkObjectResult>(result);
+    Assert.NotNull(ok.Value);
+}
+```
+
+> **Moq + nullable refs**: `Returns("value")` fails with nullable reference warnings.
+> Use `Returns((string?)"value")` explicit cast.
+
+#### DisputesControllerTests — lock scenarios
+```csharp
+[Fact]
+public async Task AcquireLock_Returns409_WhenActivelyLockedByOther()
+{
+    var lockedAt = DateTime.UtcNow;
+    var dispute  = new DisputeDto { Id = 1, CustomerId = 4,
+        IsLocked = true, LockedByName = "Banker One", LockedAt = lockedAt };
+
+    _mockDisputeRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(MapToEntity(dispute));
+
+    ControllerTestHelper.SetUser(_controller, "Banker", 2, "Banker Two");
+    var result = await _controller.AcquireLock(1);
+
+    Assert.IsType<ConflictObjectResult>(result);
+}
+```
+
+---
+
+## Frontend Tests
+
+### Stack
+| Package | Purpose |
+|---|---|
+| Vitest 4.1.9 | Test runner |
+| @testing-library/react | Component rendering |
+| @testing-library/user-event | User interactions |
+| @testing-library/jest-dom | DOM matchers |
+| jsdom | Browser environment |
+
+### Setup
+
+`vite.config.js`:
+```js
+test: {
+  environment: 'jsdom',
+  globals: true,
+  setupFiles: ['./src/test/setup.js'],
+}
+```
+
+`src/test/setup.js`:
+```js
+import '@testing-library/jest-dom';
+```
+
+### AuthContext + sessionStorage
+
+```jsx
+// src/components/__tests__/LoginPage.test.jsx
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ login: mockLogin, isAuthenticated: false }),
+}));
+
+it('calls login with trimmed credentials on submit', async () => {
+  const user = userEvent.setup();
+  render(<LoginPage />);
+
+  await user.type(screen.getByPlaceholderText(/username/i), '  admin  ');
+  await user.type(screen.getByPlaceholderText(/password/i), 'Admin123!');
+  await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+  expect(mockLogin).toHaveBeenCalledWith('admin', 'Admin123!');
 });
 ```
 
-Run frontend tests:
-```bash
-npm test
+### Form interaction — userEvent vs fireEvent
+
+> Use `userEvent.setup()` for form submissions and select interactions.
+> `fireEvent.click` does **not** reliably trigger React `onSubmit` on controlled forms.
+
+```jsx
+it('calls createDispute on valid submit', async () => {
+  const user = userEvent.setup();
+  render(<DisputeForm transaction={mockTx} onDisputeCreated={vi.fn()} onCancel={vi.fn()} />);
+
+  await user.selectOptions(screen.getByRole('combobox'), 'Unauthorized Transaction');
+  await user.type(screen.getByRole('textbox'), 'This is a detailed description.');
+  await user.click(screen.getByRole('button', { name: /create dispute/i }));
+
+  expect(mockCreateDispute).toHaveBeenCalled();
+});
 ```
 
----
+### Axios interceptors — vi.hoisted
 
-## Integration Testing
+```js
+// src/services/__tests__/api.test.js
+const refs = vi.hoisted(() => ({
+  requestFn: null, responseSuccessFn: null, responseErrorFn: null
+}));
 
-### Backend Integration Tests
+vi.mock('axios', () => ({
+  default: {
+    create: () => ({
+      interceptors: {
+        request:  { use: (fn)         => { refs.requestFn = fn; } },
+        response: { use: (ok, errFn)  => { refs.responseSuccessFn = ok; refs.responseErrorFn = errFn; } },
+      },
+    }),
+  },
+}));
 
-```csharp
-[Collection("Database collection")]
-public class TransactionControllerIntegrationTests : IAsyncLifetime
-{
-	private readonly ApplicationDbContext _context;
-	private readonly TransactionsController _controller;
-
-	public async Task InitializeAsync()
-	{
-		// Setup test database
-		var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-			.UseInMemoryDatabase(Guid.NewGuid().ToString())
-			.Options;
-
-		_context = new ApplicationDbContext(options);
-		await _context.Database.EnsureCreatedAsync();
-	}
-
-	[Fact]
-	public async Task GetTransactions_ReturnsAllTransactions()
-	{
-		// Arrange
-		var transaction = new Transaction 
-		{ 
-			CustomerId = 1, 
-			Amount = 100,
-			Merchant = "Test Merchant"
-		};
-		_context.Transactions.Add(transaction);
-		await _context.SaveChangesAsync();
-
-		// Act
-		var result = await _controller.GetTransactions();
-
-		// Assert
-		var okResult = Assert.IsType<OkObjectResult>(result);
-		var returnedTransactions = Assert.IsAssignableFrom<IEnumerable<Transaction>>(okResult.Value);
-		Assert.Single(returnedTransactions);
-	}
-
-	public async Task DisposeAsync()
-	{
-		await _context.Database.EnsureDeletedAsync();
-		_context.Dispose();
-	}
-}
+it('clears sessionStorage on 401', async () => {
+  sessionStorage.setItem('tdp_token', 'tok');
+  await refs.responseErrorFn({ response: { status: 401 } }).catch(() => {});
+  expect(sessionStorage.getItem('tdp_token')).toBeNull();
+});
 ```
 
 ---
 
 ## API Testing
 
-### Manual Testing with HTTP Client
-
-Use the `API_TESTING.http` file:
+Use `API_TESTING.http` (requires VS Code REST Client extension):
 
 ```http
-### Get all transactions
-GET http://localhost:5115/api/transactions
+### 1. Login
+POST http://localhost:5115/api/auth/login
+Content-Type: application/json
 
-### Create dispute
+{ "username": "client", "password": "Client123!" }
+
+### 2. Get transactions (paste token from step 1)
+GET http://localhost:5115/api/transactions
+Authorization: Bearer {{token}}
+
+### 3. File dispute
 POST http://localhost:5115/api/disputes
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "transactionId": 1,
-  "reason": "Unauthorized",
-  "description": "Test dispute"
+  "transactionId": 3,
+  "reason": "Unauthorized Transaction",
+  "description": "I did not authorise this utility payment."
 }
-```
 
-### Automated API Testing with RestSharp
+### 4. Acquire lock (as banker)
+POST http://localhost:5115/api/disputes/3/lock
+Authorization: Bearer {{bankerToken}}
 
-```csharp
-[Fact]
-public async Task CreateDispute_WithValidData_ReturnsCreated()
-{
-	// Arrange
-	var client = new RestClient("http://localhost:5115");
-	var request = new RestRequest("/api/disputes", Method.Post)
-		.AddJsonBody(new { 
-			transactionId = 1,
-			reason = "Unauthorized",
-			description = "Test"
-		});
+### 5. Update dispute status
+PUT http://localhost:5115/api/disputes/3
+Authorization: Bearer {{bankerToken}}
+Content-Type: application/json
 
-	// Act
-	var response = await client.ExecuteAsync(request);
-
-	// Assert
-	Assert.Equal(System.Net.HttpStatusCode.Created, response.StatusCode);
-}
-```
-
-### Load Testing with k6
-
-```javascript
-import http from 'k6/http';
-import { check, sleep } from 'k6';
-
-export let options = {
-  vus: 10,
-  duration: '30s',
-};
-
-export default function () {
-  let response = http.get('http://localhost:5115/api/transactions');
-  check(response, {
-	'status is 200': (r) => r.status === 200,
-	'response time < 500ms': (r) => r.timings.duration < 500,
-  });
-  sleep(1);
-}
-```
-
-Run k6 test:
-```bash
-k6 run script.js
-```
-
----
-
-## Frontend Testing
-
-### Component Testing
-
-```javascript
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { DisputeForm } from '../components/DisputeForm';
-
-describe('DisputeForm', () => {
-  const mockTransaction = {
-	id: 1,
-	merchant: 'Amazon',
-	amount: 100,
-	transactionDate: new Date(),
-	description: 'Test'
-  };
-
-  it('renders form with transaction details', () => {
-	render(
-	  <DisputeForm 
-		transaction={mockTransaction}
-		onDisputeCreated={() => {}}
-		onCancel={() => {}}
-	  />
-	);
-
-	expect(screen.getByText('Amazon')).toBeInTheDocument();
-	expect(screen.getByText('$100.00')).toBeInTheDocument();
-  });
-
-  it('submits dispute when form is completed', async () => {
-	const onDisputeCreated = vi.fn();
-	render(
-	  <DisputeForm 
-		transaction={mockTransaction}
-		onDisputeCreated={onDisputeCreated}
-		onCancel={() => {}}
-	  />
-	);
-
-	// Fill form
-	fireEvent.change(screen.getByLabelText(/reason/i), {
-	  target: { value: 'Unauthorized' }
-	});
-	fireEvent.change(screen.getByLabelText(/description/i), {
-	  target: { value: 'Test dispute' }
-	});
-
-	// Submit
-	fireEvent.click(screen.getByRole('button', { name: /create dispute/i }));
-
-	// Assert
-	await waitFor(() => {
-	  expect(onDisputeCreated).toHaveBeenCalled();
-	});
-  });
-});
-```
-
-### E2E Testing with Playwright
-
-```bash
-npm install --save-dev @playwright/test
-npx playwright install
-```
-
-Create `e2e/transactions.spec.ts`:
-
-```typescript
-import { test, expect } from '@playwright/test';
-
-test('user can view transactions and create dispute', async ({ page }) => {
-  // Navigate to app
-  await page.goto('http://localhost:5173');
-
-  // Check transactions are displayed
-  await expect(page.locator('text=Recent Transactions')).toBeVisible();
-
-  // Click on dispute button
-  await page.click('button:has-text("View/Dispute")');
-
-  // Fill dispute form
-  await page.selectOption('select[name="reason"]', 'Unauthorized');
-  await page.fill('textarea[name="description"]', 'I did not authorize this purchase');
-
-  // Submit form
-  await page.click('button:has-text("Create Dispute")');
-
-  // Verify success
-  await expect(page.locator('text=Dispute created successfully')).toBeVisible();
-});
-```
-
-Run Playwright tests:
-```bash
-npx playwright test
-```
-
----
-
-## Performance Testing
-
-### Backend Performance
-
-```csharp
-[Fact]
-public async Task GetTransactions_WithLargeDataset_CompletesUnder500ms()
-{
-	// Arrange - seed large dataset
-	var stopwatch = Stopwatch.StartNew();
-
-	// Act
-	var result = await _controller.GetTransactions();
-
-	stopwatch.Stop();
-
-	// Assert
-	Assert.True(stopwatch.ElapsedMilliseconds < 500, 
-		$"Request took {stopwatch.ElapsedMilliseconds}ms");
-}
-```
-
-### Frontend Performance
-
-```javascript
-// Measure component render time
-it('renders quickly with large dataset', () => {
-  const largeDataset = Array.from({ length: 1000 }, (_, i) => ({
-	id: i,
-	merchant: `Merchant ${i}`,
-	amount: 100 + i,
-  }));
-
-  const start = performance.now();
-  render(<TransactionsList transactions={largeDataset} />);
-  const end = performance.now();
-
-  expect(end - start).toBeLessThan(500);
-});
+{ "status": 2, "resolutionNotes": "Verified and resolved." }
 ```
 
 ---
 
 ## Security Testing
 
-### OWASP Top 10 Checks
+### OWASP Checks Covered
 
-1. **SQL Injection**: Verify parameterized queries (✓ Using EF Core)
-2. **XSS Prevention**: Check React auto-escaping
-3. **CSRF Protection**: Implement CSRF tokens
-4. **Authentication**: Test JWT validation
-5. **Authorization**: Test role-based access
+| Check | Implementation |
+|---|---|
+| SQL Injection | EF Core parameterized queries |
+| XSS | React auto-escaping |
+| Broken Authentication | JWT HS256 + 24h expiry |
+| Broken Access Control | Role policies per endpoint + client cross-access 403 |
+| Security Misconfiguration | `RequireHttpsMetadata=true` in production |
+| CSRF | SPA + JWT Bearer (not cookie-based) — not applicable |
 
-### Input Validation Tests
+### Authorization boundary tests (from `DisputesControllerTests`)
 
 ```csharp
-[Theory]
-[InlineData("")]
-[InlineData(null)]
-[InlineData("   ")]
-public async Task CreateDispute_WithInvalidDescription_ReturnsBadRequest(string description)
-{
-	var request = new CreateDisputeRequest
-	{
-		TransactionId = 1,
-		Reason = "Unauthorized",
-		Description = description
-	};
-
-	var result = await _controller.CreateDispute(request);
-
-	Assert.IsType<BadRequestObjectResult>(result);
-}
+[Fact] public async Task DeleteDispute_Returns403_WhenBankerTriesToDelete() { ... }
+[Fact] public async Task GetDispute_Returns403_WhenClientAccessesOtherCustomer() { ... }
+[Fact] public async Task CreateDispute_Returns400_WhenClientOwnsWrongTransaction() { ... }
 ```
 
 ---
 
-## Continuous Integration
+## CI/CD
 
-### GitHub Actions Example
+### GitHub Actions
 
 ```yaml
-name: Test
+name: CI
 
 on: [push, pull_request]
 
 jobs:
-  test:
-	runs-on: ubuntu-latest
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - run: dotnet restore backend/
+      - run: dotnet build backend/ --no-restore
+      - run: dotnet test backend/TransactionDisputePortal.Api.Tests --no-build --verbosity normal
 
-	steps:
-	- uses: actions/checkout@v3
-
-	- name: Setup .NET
-	  uses: actions/setup-dotnet@v3
-	  with:
-		dotnet-version: '10.0.x'
-
-	- name: Restore dependencies
-	  run: dotnet restore backend/
-
-	- name: Build
-	  run: dotnet build backend/ --no-restore
-
-	- name: Test
-	  run: dotnet test backend/ --no-build --verbosity normal
-
-	- name: Setup Node
-	  uses: actions/setup-node@v3
-	  with:
-		node-version: '18'
-
-	- name: Install frontend dependencies
-	  run: npm ci
-	  working-directory: frontend/TransactionDisputePortal.Web
-
-	- name: Run frontend tests
-	  run: npm test
-	  working-directory: frontend/TransactionDisputePortal.Web
-```
-
----
-
-## Test Coverage
-
-Target coverage metrics:
-- Backend: > 80%
-- Frontend: > 70%
-
-Generate coverage reports:
-
-**Backend:**
-```bash
-dotnet test backend/ /p:CollectCoverageMetrics=true
-```
-
-**Frontend:**
-```bash
-npm test -- --coverage
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+        working-directory: frontend/TransactionDisputePortal.Web
+      - run: npm run test:run
+        working-directory: frontend/TransactionDisputePortal.Web
 ```
 
 ---
 
 ## Test Execution Checklist
 
-- [ ] All unit tests pass
-- [ ] Integration tests pass
-- [ ] API tests pass
-- [ ] E2E tests pass
-- [ ] Performance benchmarks met
-- [ ] Security tests pass
-- [ ] Code coverage > target
-- [ ] No console errors in frontend
-- [ ] Database migrations work
-- [ ] Docker build succeeds
+- [x] 69 backend unit tests — 0 failures
+- [x] 41 frontend component tests — 0 failures
+- [x] Auth scenarios (login success/fail, role access, JWT claims)
+- [x] Repository CRUD (InMemory, no seed conflict)
+- [x] Dispute soft-lock acquire / release / conflict / expiry
+- [x] sessionStorage cleared on 401 and inactivity
+- [x] Dispute status badge in transactions list
+- [x] Dispute form hidden when active dispute exists
+- [ ] E2E tests (Playwright) — future enhancement
+- [ ] Load testing (k6) — future enhancement
 
 ---
 
-Last Updated: January 2024
+Last Updated: June 2026

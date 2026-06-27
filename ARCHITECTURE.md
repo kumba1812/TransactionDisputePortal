@@ -1,4 +1,4 @@
-# Architecture Documentation - Capitec Transaction Dispute Portal
+﻿# Architecture Documentation - Capitec Transaction Dispute Portal
 
 ## System Architecture Overview
 
@@ -111,7 +111,7 @@ User Action → Component Event → API Call → Backend Response → State Upda
 ### Technology Stack
 - **Framework**: ASP.NET Core 10.0
 - **ORM**: Entity Framework Core 10.0.9
-- **Database**: PostgresDB (Development)
+- **Database**: PostgreSQL 15 (Npgsql)
 - **Dependency Injection**: Built-in .NET DI
 
 ### Layered Architecture
@@ -133,7 +133,7 @@ User Action → Component Event → API Call → Backend Response → State Upda
 └──────────────┬──────────────────────┘
 			   │
 ┌──────────────▼──────────────────────┐
-│     PostgresDB Database                 │
+│     PostgreSQL 15 Database              │
 │  Persistent data storage            │
 └─────────────────────────────────────┘
 ```

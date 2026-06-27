@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
 using TransactionDisputePortal.Api.Models;
 
@@ -17,6 +17,14 @@ public class TransactionRepository : ITransactionRepository
     {
         return await _context.Transactions
             .Where(t => t.CustomerId == customerId)
+            .Include(t => t.Disputes)
+            .OrderByDescending(t => t.TransactionDate)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Transaction>> GetAllAsync()
+    {
+        return await _context.Transactions
             .Include(t => t.Disputes)
             .OrderByDescending(t => t.TransactionDate)
             .ToListAsync();
@@ -72,6 +80,15 @@ public class DisputeRepository : IDisputeRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Dispute>> GetAllAsync()
+    {
+        return await _context.Disputes
+            .Include(d => d.Transaction)
+            .AsNoTracking()
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<Dispute>> GetByTransactionIdAsync(int transactionId)
     {
         return await _context.Disputes
@@ -85,7 +102,6 @@ public class DisputeRepository : IDisputeRepository
     {
         return await _context.Disputes
             .Include(d => d.Transaction)
-            .AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == id);
     }
 
@@ -110,5 +126,54 @@ public class DisputeRepository : IDisputeRepository
             _context.Disputes.Remove(dispute);
             await _context.SaveChangesAsync();
         }
+    }
+
+    public async Task UpdateLockAsync(int id, int? userId, string? name, DateTime? lockedAt)
+    {
+        var dispute = await _context.Disputes.FindAsync(id);
+        if (dispute != null)
+        {
+            dispute.LockedByUserId = userId;
+            dispute.LockedByName = name;
+            dispute.LockedAt = lockedAt;
+            await _context.SaveChangesAsync();
+        }
+    }
+}
+
+public class UserRepository : IUserRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public UserRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<ApplicationUser?> GetByUsernameAsync(string username)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
+    }
+
+    public async Task<ApplicationUser?> GetByIdAsync(int id)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id);
+    }
+
+    public async Task<ApplicationUser> AddAsync(ApplicationUser user)
+    {
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+        return user;
+    }
+
+    public async Task UpdateAsync(ApplicationUser user)
+    {
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
     }
 }

@@ -22,6 +22,12 @@
   font-size: 22px;
 }
 
+.filing-as {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #555;
+}
+
 .close-btn {
   background: none;
   border: none;
@@ -88,6 +94,82 @@
   border-radius: 4px;
   margin-bottom: 20px;
   font-weight: 500;
+}
+
+/* Existing dispute status card */
+.existing-dispute-card {
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.existing-dispute-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.existing-dispute-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #333;
+}
+
+.dispute-status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.dispute-status-pending     { background-color: #fff3e0; color: #e65100; }
+.dispute-status-underreview { background-color: #e3f2fd; color: #1565c0; }
+.dispute-status-resolved    { background-color: #e8f5e9; color: #2e7d32; }
+.dispute-status-refunded    { background-color: #ede7f6; color: #4527a0; }
+.dispute-status-rejected    { background-color: #ffebee; color: #c62828; }
+
+.existing-dispute-body {
+  padding: 12px 16px;
+  background-color: #fafafa;
+}
+
+.existing-dispute-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 6px 0;
+  font-size: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.existing-dispute-row:last-child {
+  border-bottom: none;
+}
+
+.existing-dispute-label {
+  color: #777;
+  font-weight: 600;
+  min-width: 90px;
+}
+
+.existing-dispute-value {
+  color: #333;
+  text-align: right;
+  flex: 1;
+}
+
+.existing-dispute-note {
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 12px;
+  color: #888;
+  background-color: #fff8e1;
+  border-top: 1px solid #ffe082;
 }
 
 .form-group {

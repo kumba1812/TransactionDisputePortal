@@ -105,6 +105,45 @@
   background-color: #f57c00;
 }
 
+/* Dispute status badges in the Dispute column */
+.dispute-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.dispute-badge-pending {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.dispute-badge-underreview {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.dispute-badge-resolved {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.dispute-badge-refunded {
+  background-color: #ede7f6;
+  color: #4527a0;
+}
+
+.dispute-badge-rejected {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.no-dispute {
+  color: #bdbdbd;
+  font-size: 14px;
+}
+
 .loading,
 .error,
 .no-data {

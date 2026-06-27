@@ -8,6 +8,7 @@ namespace TransactionDisputePortal.Api.Tests;
 
 public class TransactionRepositoryTests
 {
+    // With seed data (used by existing tests)
     private ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -18,6 +19,26 @@ public class TransactionRepositoryTests
         context.Database.EnsureCreated();
         return context;
     }
+
+    // Without seed data – use when verifying counts or full-table results
+    private ApplicationDbContext CreateFreshContext()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        return new ApplicationDbContext(options);
+    }
+
+    private static Transaction SampleTx(int customerId = 1, string uid = "T-001") => new()
+    {
+        CustomerId = customerId,
+        TransactionId = uid,
+        Amount = 10.5m,
+        Description = "Test",
+        TransactionDate = DateTime.UtcNow,
+        Merchant = "M",
+        Category = "Cat"
+    };
 
     [Fact]
     public async Task AddAndGetTransaction()
@@ -55,5 +76,54 @@ public class TransactionRepositoryTests
 
         var list = await repo.GetByCustomerIdAsync(2);
         Assert.Equal(2, list.Count());
+    }
+
+    [Fact]
+    public async Task GetById_ReturnsNull_WhenMissing()
+    {
+        var repo = new TransactionRepository(CreateFreshContext());
+        var result = await repo.GetByIdAsync(99999);
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetAll_ReturnsAllTransactions()
+    {
+        var context = CreateFreshContext();
+        var repo = new TransactionRepository(context);
+
+        await repo.AddAsync(SampleTx(1, "GA-1"));
+        await repo.AddAsync(SampleTx(2, "GA-2"));
+        await repo.AddAsync(SampleTx(3, "GA-3"));
+
+        var all = await repo.GetAllAsync();
+        Assert.Equal(3, all.Count());
+    }
+
+    [Fact]
+    public async Task UpdateTransaction_PersistsChanges()
+    {
+        var context = CreateFreshContext();
+        var repo = new TransactionRepository(context);
+
+        var added = await repo.AddAsync(SampleTx(1, "UP-1"));
+        added.Description = "Updated";
+        await repo.UpdateAsync(added);
+
+        var fetched = await repo.GetByIdAsync(added.Id);
+        Assert.Equal("Updated", fetched!.Description);
+    }
+
+    [Fact]
+    public async Task DeleteTransaction_RemovesFromDb()
+    {
+        var context = CreateFreshContext();
+        var repo = new TransactionRepository(context);
+
+        var added = await repo.AddAsync(SampleTx(1, "DEL-1"));
+        await repo.DeleteAsync(added.Id);
+
+        var fetched = await repo.GetByIdAsync(added.Id);
+        Assert.Null(fetched);
     }
 }

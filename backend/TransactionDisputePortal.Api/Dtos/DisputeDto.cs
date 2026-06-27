@@ -1,4 +1,4 @@
-namespace TransactionDisputePortal.Api.Dtos;
+﻿namespace TransactionDisputePortal.Api.Dtos;
 
 public class DisputeDto
 {
@@ -15,6 +15,13 @@ public class DisputeDto
     public int TransactionIdFk { get; set; }
     public TransactionDto? Transaction { get; set; }
 
+    // Lock state â€” used by frontend to show who is editing
+    public bool IsLocked { get; set; }
+    public string? LockedByName { get; set; }
+    public DateTime? LockedAt { get; set; }
+
+    private const int LockExpiryMinutes = 10;
+
     public DisputeDto() { }
 
     public DisputeDto(Models.Dispute dispute)
@@ -30,6 +37,10 @@ public class DisputeDto
         ResolutionNotes = dispute.ResolutionNotes;
         RefundAmount = dispute.RefundAmount.HasValue ? dispute.RefundAmount.Value : 0m;
         TransactionIdFk = dispute.TransactionIdFk;
+        LockedByName = dispute.LockedByName;
+        LockedAt = dispute.LockedAt;
+        IsLocked = dispute.LockedAt.HasValue &&
+                   dispute.LockedAt.Value.AddMinutes(LockExpiryMinutes) > DateTime.UtcNow;
 
         // Include transaction without its disputes collection
         if (dispute.Transaction != null)

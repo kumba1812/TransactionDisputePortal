@@ -1,10 +1,15 @@
 using System;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using TransactionDisputePortal.Api.Data;
-using Microsoft.EntityFrameworkCore;
+using TransactionDisputePortal.Api.Models;
 using TransactionDisputePortal.Api.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,16 +19,14 @@ builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 
-// Configure DbContext: support by default, Postgres when connection string indicates
+// Configure DbContext: Postgres when connection string indicates, else SQLite
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrWhiteSpace(conn) && conn.Contains("Host=", StringComparison.OrdinalIgnoreCase))
 {
-    // Assume Postgres connection string
     builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseNpgsql(conn));
 }
 else
 {
-    // Log Error no database configured
     Console.WriteLine("No valid database connection string found.");
 }
 
@@ -45,39 +48,61 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Repository registration
+// Repository + Identity password hasher registration
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<IDisputeRepository, DisputeRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordHasher<ApplicationUser>, PasswordHasher<ApplicationUser>>();
 
-// Authentication - JWT
+// Authentication — JWT Bearer
+var jwtKey    = builder.Configuration["Jwt:Key"]    ?? Environment.GetEnvironmentVariable("JWT_KEY")    ?? "ChangeMeInProductionKey123!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "TransactionDisputePortal";
+
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
-    var key = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY") ?? "ChangeMeInProductionKey123!";
-    var issuer = builder.Configuration["Jwt:Issuer"] ?? "TransactionDisputePortal";
-
-    options.RequireHttpsMetadata = true;
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
-    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+    options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(key)),
+        IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtKey)),
         ValidateIssuer = true,
-        ValidIssuer = issuer,
-        ValidateAudience = false
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.Zero
     };
 });
 
-// Swagger
+// Authorization policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("BankerOrAbove", p => p.RequireRole("Admin", "Banker"));
+    options.AddPolicy("ClientOrAbove", p => p.RequireRole("Admin", "Client"));
+    options.AddPolicy("WriteAccess",   p => p.RequireRole("Admin"));
+});
+
+// Swagger with JWT support
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "TransactionDisputePortal API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT token (without 'Bearer ' prefix)"
+    });
+});
 
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -87,7 +112,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "TransactionDisputePortal API V1");
-        options.RoutePrefix = "swagger"; // serve at /swagger
+        options.RoutePrefix = "swagger";
     });
 }
 
@@ -98,20 +123,6 @@ app.UseHttpsRedirection();
 // Authentication & Authorization middleware
 app.UseAuthentication();
 
-// In Development, if no authentication present, inject a demo user for convenience
-if (app.Environment.IsDevelopment())
-{
-    app.Use(async (context, next) =>
-    {
-        if (!context.User?.Identity?.IsAuthenticated ?? false)
-        {
-            var claims = new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "1") };
-            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Development");
-            context.User = new System.Security.Claims.ClaimsPrincipal(identity);
-        }
-        await next();
-    });
-}
 
 app.UseAuthorization();
 

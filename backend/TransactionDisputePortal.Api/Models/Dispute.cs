@@ -38,6 +38,17 @@ namespace TransactionDisputePortal.Api.Models
         [Column("transaction_id_fk")]
         public int TransactionIdFk { get; set; }
 
+        // Soft-lock fields — prevent two bankers editing simultaneously
+        [Column("locked_by_user_id")]
+        public int? LockedByUserId { get; set; }
+
+        [Column("locked_by_name")]
+        [MaxLength(200)]
+        public string? LockedByName { get; set; }
+
+        [Column("locked_at")]
+        public DateTime? LockedAt { get; set; }
+
         [ForeignKey("TransactionIdFk")]
         public Transaction Transaction { get; set; } = null!;
     }

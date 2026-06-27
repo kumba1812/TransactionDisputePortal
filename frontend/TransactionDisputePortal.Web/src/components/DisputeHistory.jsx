@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { disputeApi } from '../services/api';
 import { getStatusLabel, formatCurrency, formatDate } from '../utils/statusHelpers';
+import { useAuth } from '../context/AuthContext';
 import { DisputeStatusModal } from './DisputeStatusModal';
 import '../styles/DisputeHistory.css';
 
@@ -10,6 +11,11 @@ export function DisputeHistory() {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
   const [selectedDispute, setSelectedDispute] = useState(null);
+  // Map of disputeId → lock-warning message shown inline on card
+  const [lockWarnings, setLockWarnings] = useState({});
+
+  const { user } = useAuth();
+  const canUpdateStatus = user?.role === 'Admin' || user?.role === 'Banker';
 
   useEffect(() => {
     fetchDisputes();
@@ -20,12 +26,36 @@ export function DisputeHistory() {
       setLoading(true);
       const response = await disputeApi.getDisputes();
       setDisputes(response.data);
+      setLockWarnings({});
       setError(null);
     } catch (err) {
       setError('Failed to load dispute history ' + (err.response?.data?.message || err.message));
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenUpdateModal = async (dispute) => {
+    // Clear any previous warning for this card
+    setLockWarnings(prev => ({ ...prev, [dispute.id]: null }));
+
+    try {
+      const res = await disputeApi.acquireLock(dispute.id);
+      setSelectedDispute(res.data);
+    } catch (err) {
+      if (err.response?.status === 409) {
+        const { lockedByName } = err.response.data;
+        setLockWarnings(prev => ({
+          ...prev,
+          [dispute.id]: `⚠ Currently being reviewed by ${lockedByName}`
+        }));
+      } else {
+        setLockWarnings(prev => ({
+          ...prev,
+          [dispute.id]: 'Could not open dispute for editing. Please try again.'
+        }));
+      }
     }
   };
 
@@ -52,11 +82,6 @@ export function DisputeHistory() {
   });
 
   const statusOptions = ['all', 'pending', 'underreview', 'resolved', 'rejected', 'refunded'];
-
-  const handleStatusUpdated = () => {
-    setSelectedDispute(null);
-    fetchDisputes();
-  };
 
   if (loading) return <div className="loading">Loading dispute history...</div>;
   if (error) return <div className="error">{error}</div>;
@@ -91,12 +116,17 @@ export function DisputeHistory() {
             <div key={dispute.id} className="dispute-card">
               <div className="card-header">
                 <h3>{dispute.reason}</h3>
-                <span 
-                  className="status-badge"
-                  style={{ backgroundColor: getStatusColor(dispute.status) }}
-                >
-                  {getStatusLabel(dispute.status)}
-                </span>
+                <div className="card-header-right">
+                  {dispute.isLocked && dispute.lockedByName !== user?.fullName && (
+                    <span className="lock-badge">🔒 {dispute.lockedByName}</span>
+                  )}
+                  <span
+                    className="status-badge"
+                    style={{ backgroundColor: getStatusColor(dispute.status) }}
+                  >
+                    {getStatusLabel(dispute.status)}
+                  </span>
+                </div>
               </div>
 
               <div className="card-body">
@@ -130,12 +160,18 @@ export function DisputeHistory() {
                   </div>
                 )}
 
-                <button 
-                  className="update-status-btn"
-                  onClick={() => setSelectedDispute(dispute)}
-                >
-                  Update Status
-                </button>
+                {lockWarnings[dispute.id] && (
+                  <div className="lock-warning">{lockWarnings[dispute.id]}</div>
+                )}
+
+                {canUpdateStatus && (
+                  <button
+                    className="update-status-btn"
+                    onClick={() => handleOpenUpdateModal(dispute)}
+                  >
+                    Update Status
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -143,10 +179,13 @@ export function DisputeHistory() {
       )}
 
       {selectedDispute && (
-        <DisputeStatusModal 
+        <DisputeStatusModal
           dispute={selectedDispute}
           onClose={() => setSelectedDispute(null)}
-          onStatusUpdated={handleStatusUpdated}
+          onStatusUpdated={() => {
+            setSelectedDispute(null);
+            fetchDisputes();
+          }}
         />
       )}
     </div>
