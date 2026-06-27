@@ -4,12 +4,17 @@ A full-stack web application for managing transaction disputes. Built with .NET 
 
 ## 🎯 Features
 
-- **View Transactions**: Display all customer transactions with detailed information
-- **File Disputes**: Submit disputes for transactions with reason and description
-- **Dispute History**: Track all filed disputes with status updates
-- **Real-time Updates**: Live status tracking for disputes
+- **Login & Authentication**: JWT Bearer authentication with username/password; tokens stored in `sessionStorage`
+- **Role-Based Access Control**: Four roles — Admin, Banker, Client, ReadOnly — each with distinct permissions
+- **5-Minute Inactivity Logout**: Automatic session expiry after 5 minutes of user inactivity
+- **View Transactions**: Display transactions filtered by the logged-in customer
+- **Dispute Status Badge**: Each transaction row shows its current dispute status at a glance
+- **File Disputes**: Clients submit disputes with reason and description; form is hidden once a dispute is active
+- **Dispute Status Card**: Clients can see the full status, reason, and resolution notes of an existing dispute
+- **Banker Dispute Management**: Bankers acquire a soft lock before editing a dispute to prevent concurrent edits
+- **Dispute History**: Track all filed disputes with status and resolution details
 - **Responsive Design**: Mobile-friendly interface
-- **Production-Ready**: Docker containerization and deployment ready
+- **Production-Ready**: Docker containerization with PostgreSQL and deployment-ready configuration
 
 ## 📋 Project Structure
 
@@ -132,32 +137,48 @@ docker-compose down -v
 
 ## 🔌 API Endpoints
 
-### Transactions
-- `GET /api/transactions` - Get all transactions for the customer
-- `GET /api/transactions/{id}` - Get a specific transaction
-- `POST /api/transactions` - Create a new transaction (for admin)
-- `PUT /api/transactions/{id}` - Update a transaction
-- `DELETE /api/transactions/{id}` - Delete a transaction
+### Authentication
+- `POST /api/auth/login` - Authenticate and receive a JWT (pass `{"username": "...", "password": "..."}`)
 
-### Disputes
-- `GET /api/disputes` - Get all disputes for the customer
+### Transactions *(require Bearer token)*
+- `GET /api/transactions` - Get transactions (Clients see their own; Bankers/Admin see all)
+- `GET /api/transactions/{id}` - Get a specific transaction
+- `POST /api/transactions` - Create a new transaction (Admin/Banker)
+- `PUT /api/transactions/{id}` - Update a transaction (Admin/Banker)
+- `DELETE /api/transactions/{id}` - Delete a transaction (Admin only)
+
+### Disputes *(require Bearer token)*
+- `GET /api/disputes` - Get disputes (role-filtered)
 - `GET /api/disputes/{id}` - Get a specific dispute
 - `GET /api/disputes/transaction/{transactionId}` - Get disputes for a transaction
-- `POST /api/disputes` - Create a new dispute
-- `PUT /api/disputes/{id}` - Update dispute status
-- `DELETE /api/disputes/{id}` - Delete a dispute
+- `POST /api/disputes` - File a new dispute (Client only)
+- `PUT /api/disputes/{id}` - Update dispute status/resolution (Banker/Admin)
+- `DELETE /api/disputes/{id}` - Delete a dispute (Admin only)
+- `POST /api/disputes/{id}/lock` - Acquire soft edit lock (Banker/Admin)
+- `DELETE /api/disputes/{id}/lock` - Release soft edit lock (Banker/Admin)
 
 ### Health Check
 - `GET /api/health` - API health status
 
 ## 📊 Data Models
 
+### User
+```json
+{
+  "id": 4,
+  "username": "client",
+  "fullName": "Client User",
+  "role": "Client",
+  "isActive": true
+}
+```
+
 ### Transaction
-```csharp
+```json
 {
   "id": 1,
-  "customerId": 1,
-  "transactionId": "TXN001",
+  "customerId": 4,
+  "transactionUid": "TXN001",
   "amount": 125.50,
   "description": "Online Purchase",
   "transactionDate": "2024-01-15T00:00:00Z",
@@ -198,27 +219,65 @@ npm test
 ### API Testing with curl
 
 ```powershell
-# Get all transactions
-curl http://localhost:5115/api/transactions
+# 1. Login and get a token
+$response = curl -X POST http://localhost:5115/api/auth/login `
+  -H "Content-Type: application/json" `
+  -d '{"username": "client", "password": "Client123!"}'
+# Copy the token from the response
 
-# Get health status
-curl http://localhost:5115/api/health
+# 2. Get transactions (Bearer token required)
+curl http://localhost:5115/api/transactions `
+  -H "Authorization: Bearer <your-token>"
 
-# Create a dispute (requires transaction ID)
+# 3. File a dispute
 curl -X POST http://localhost:5115/api/disputes `
   -H "Content-Type: application/json" `
-  -d '{"transactionId": 1, "reason": "Unauthorized", "description": "Test dispute"}'
+  -H "Authorization: Bearer <your-token>" `
+  -d '{"transactionId": 3, "reason": "Unauthorized Transaction", "description": "I did not authorize this payment."}'
+
+# 4. Get health status (no auth required)
+curl http://localhost:5115/api/health
 ```
+
+Or use the included `API_TESTING.http` file with VS Code REST Client (no manual token handling needed).
+
+## � User Roles & Login
+
+The application uses JWT Bearer authentication. All endpoints (except `/api/health`) require a valid token.
+
+### Seeded Users
+
+| Username | Password | Role | Access |
+|---|---|---|---|
+| admin | Admin123! | Admin | Full access — all endpoints |
+| banker | Banker123! | Banker | View/edit all disputes; acquire locks |
+| banker2 | Banker2123! | Banker | Same as above |
+| client | Client123! | Client | Own transactions + file/view own disputes |
+| readonly | Readonly123! | ReadOnly | Read-only access to all data |
+
+### Role Permissions Summary
+
+| Action | Admin | Banker | Client | ReadOnly |
+|---|:---:|:---:|:---:|:---:|
+| View transactions | ✅ All | ✅ All | ✅ Own | ✅ All |
+| Create/edit transactions | ✅ | ✅ | ❌ | ❌ |
+| View disputes | ✅ All | ✅ All | ✅ Own | ✅ All |
+| File dispute | ✅ | ❌ | ✅ | ❌ |
+| Update dispute status | ✅ | ✅ | ❌ | ❌ |
+| Delete dispute | ✅ | ❌ | ❌ | ❌ |
+| Acquire/release lock | ✅ | ✅ | ❌ | ❌ |
+
+---
 
 ## 🗄️ Database
 
-The application uses PostgresDB for data persistence:
-- **Local**: `transactiondispute.db` in the application directory
-- **Docker**: Stored in a named volume `db-data` for persistence across container restarts
+The application uses PostgreSQL 15 for data persistence:
+- **Local**: Connect via `ConnectionStrings__DefaultConnection` (see Environment Variables below)
+- **Docker**: Stored in a named volume `pgdata` for persistence across container restarts
 
 ### Database Initialization
 
-The database is automatically created and seeded with sample data on first run through Entity Framework Core migrations.
+On the first `docker-compose up`, PostgreSQL runs `backend/docker/init/seed.sql` which creates all tables, pre-seeds 5 users + sample transactions + disputes, marks the EF Core migration as already applied, and resets serial sequences.
 
 ## 📝 Environment Variables
 

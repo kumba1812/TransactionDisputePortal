@@ -14,13 +14,19 @@
 │               Frontend (React + Vite)                        │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Components:                                         │   │
+│  │  - LoginPage                                        │   │
 │  │  - TransactionsList                                 │   │
 │  │  - DisputeForm                                      │   │
 │  │  - DisputeHistory                                   │   │
+│  │  - DisputeStatusModal                               │   │
+│  └──────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  Context:                                            │   │
+│  │  - AuthContext (JWT + sessionStorage + inactivity)  │   │
 │  └──────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Services:                                           │   │
-│  │  - api.js (Axios HTTP client)                       │   │
+│  │  - api.js (Axios + Bearer interceptor + 401 handler)│   │
 │  └──────────────────────────────────────────────────────┘   │
 └────────────────────┬────────────────────────────────────────┘
 					 │
@@ -31,8 +37,9 @@
 │           (http://localhost:5115)                            │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Controllers Layer:                                  │   │
+│  │  - AuthController (login, JWT issuance)             │   │
 │  │  - TransactionsController                           │   │
-│  │  - DisputesController                               │   │
+│  │  - DisputesController (+ lock endpoints)            │   │
 │  │  - HealthController                                 │   │
 │  └──────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────┐   │
@@ -43,6 +50,7 @@
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Data Access Layer:                                  │   │
 │  │  - Entity Framework Core                            │   │
+│  │  - IUserRepository / UserRepository                 │   │
 │  │  - ITransactionRepository                           │   │
 │  │  - IDisputeRepository                               │   │
 │  └──────────────────────────────────────────────────────┘   │
@@ -55,6 +63,7 @@
 │           (transactiondispute.db)                            │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Tables:                                             │   │
+│  │  - Users                                             │   │
 │  │  - Transactions                                      │   │
 │  │  - Disputes                                          │   │
 │  └──────────────────────────────────────────────────────┘   │
@@ -75,19 +84,22 @@
 ### Component Hierarchy
 
 ```
-App (Main Container)
-├── Header
-├── Navigation (Tab Switcher)
-└── Main Content Area
-	├── Transactions Tab
-	│   ├── TransactionsList
-	│   │   └── Transaction Rows
-	│   └── DisputeForm (when transaction selected)
-	│       ├── Form Fields
-	│       └── Submit/Cancel Buttons
-	└── Dispute History Tab
-		└── DisputeHistory
-			└── Dispute Cards (Grid)
+App (Router / AuthContext Provider)
+├── LoginPage (unauthenticated route)
+└── Protected Layout (requires valid JWT)
+    ├── Header (username, role badge, logout)
+    ├── Navigation (Tab Switcher)
+    └── Main Content Area
+        ├── Transactions Tab
+        │   ├── TransactionsList
+        │   │   └── Transaction Rows (with dispute status badge)
+        │   ├── DisputeForm (when transaction selected + no active dispute)
+        │   │   ├── Existing Dispute Card (shown when dispute already filed)
+        │   │   └── Form Fields + Submit/Cancel
+        │   └── DisputeStatusModal (Banker/Admin status editor)
+        └── Dispute History Tab
+            └── DisputeHistory
+                └── Dispute Cards (Grid)
 ```
 
 ### Data Flow
@@ -110,8 +122,11 @@ User Action → Component Event → API Call → Backend Response → State Upda
 
 ### Technology Stack
 - **Framework**: ASP.NET Core 10.0
-- **ORM**: Entity Framework Core 10.0.9
-- **Database**: PostgreSQL 15 (Npgsql)
+- **Authentication**: JWT Bearer (Microsoft.AspNetCore.Authentication.JwtBearer 10.0.0)
+- **Password Hashing**: PBKDF2 via `PasswordHasher<T>`
+- **Authorization**: Role-based policies (Admin / Banker / Client / ReadOnly)
+- **ORM**: Entity Framework Core 10.0.9 (Npgsql)
+- **Database**: PostgreSQL 15
 - **Dependency Injection**: Built-in .NET DI
 
 ### Layered Architecture
@@ -140,6 +155,9 @@ User Action → Component Event → API Call → Backend Response → State Upda
 
 ### Controllers
 
+#### AuthController
+- `POST /api/auth/login` - Validate credentials, return signed JWT
+
 #### TransactionsController
 - `GET /api/transactions` - Retrieve all transactions
 - `GET /api/transactions/{id}` - Get specific transaction
@@ -151,27 +169,48 @@ User Action → Component Event → API Call → Backend Response → State Upda
 - `GET /api/disputes` - Get all disputes
 - `GET /api/disputes/{id}` - Get specific dispute
 - `GET /api/disputes/transaction/{id}` - Get disputes for transaction
-- `POST /api/disputes` - File new dispute
-- `PUT /api/disputes/{id}` - Update dispute status
-- `DELETE /api/disputes/{id}` - Delete dispute
+- `POST /api/disputes/{id}/lock` - Acquire soft edit lock
+- `DELETE /api/disputes/{id}/lock` - Release soft edit lock
+
+### User Roles
+
+| Role | Login | View Transactions | Manage Transactions | View Disputes | File Dispute | Update Dispute | Acquire Lock |
+|---|---|---|---|---|---|---|---|
+| Admin | ✅ | All | ✅ | All | ✅ | ✅ | ✅ |
+| Banker | ✅ | All | ✅ | All | ❌ | ✅ | ✅ |
+| Client | ✅ | Own | ❌ | Own | ✅ | ❌ | ❌ |
+| ReadOnly | ✅ | All | ❌ | All | ❌ | ❌ | ❌ |
 
 ### Models
+
+#### ApplicationUser Entity
+```csharp
+public class ApplicationUser
+{
+    public int Id { get; set; }
+    public string Username { get; set; }
+    public string PasswordHash { get; set; }  // PBKDF2 via PasswordHasher<T>
+    public string FullName { get; set; }
+    public string Role { get; set; }           // "Admin" | "Banker" | "Client" | "ReadOnly"
+    public bool IsActive { get; set; }
+}
+```
 
 #### Transaction Entity
 ```csharp
 public class Transaction
 {
-	public int Id { get; set; }
-	public int CustomerId { get; set; }
-	public string TransactionId { get; set; }
-	public decimal Amount { get; set; }
-	public string Description { get; set; }
-	public DateTime TransactionDate { get; set; }
-	public string Merchant { get; set; }
-	public string Category { get; set; }
-	public TransactionStatus Status { get; set; }
-	public DateTime CreatedAt { get; set; }
-	public ICollection<Dispute> Disputes { get; set; }
+    public int Id { get; set; }
+    [Column("customer_id")]      public int CustomerId { get; set; }
+    [Column("transaction_uid")] public string TransactionUid { get; set; }
+    public decimal Amount { get; set; }
+    public string Description { get; set; }
+    [Column("transaction_date")] public DateTime TransactionDate { get; set; }
+    public string Merchant { get; set; }
+    public string Category { get; set; }
+    public TransactionStatus Status { get; set; }
+    [Column("created_at")]       public DateTime CreatedAt { get; set; }
+    public ICollection<Dispute> Disputes { get; set; }
 }
 ```
 
@@ -179,17 +218,21 @@ public class Transaction
 ```csharp
 public class Dispute
 {
-	public int Id { get; set; }
-	public int TransactionId { get; set; }
-	public int CustomerId { get; set; }
-	public string Reason { get; set; }
-	public string Description { get; set; }
-	public DisputeStatus Status { get; set; }
-	public DateTime CreatedAt { get; set; }
-	public DateTime? ResolvedAt { get; set; }
-	public string? ResolutionNotes { get; set; }
-	public decimal? RefundAmount { get; set; }
-	public Transaction? Transaction { get; set; }
+    public int Id { get; set; }
+    [Column("transaction_id")]   public int TransactionIdFk { get; set; }
+    [Column("customer_id")]      public int CustomerId { get; set; }
+    public string Reason { get; set; }
+    public string Description { get; set; }
+    public DisputeStatus Status { get; set; }
+    [Column("created_at")]       public DateTime CreatedAt { get; set; }
+    [Column("resolved_at")]      public DateTime? ResolvedAt { get; set; }
+    [Column("resolution_notes")] public string? ResolutionNotes { get; set; }
+    [Column("refund_amount")]    public decimal? RefundAmount { get; set; }
+    // Soft-lock fields
+    [Column("locked_by_user_id")] public int? LockedByUserId { get; set; }
+    [Column("locked_by_name")]    public string? LockedByName { get; set; }
+    [Column("locked_at")]         public DateTime? LockedAt { get; set; }
+    public Transaction? Transaction { get; set; }
 }
 ```
 
@@ -259,6 +302,44 @@ public class Dispute
 ---
 
 ## 4. API Contracts
+
+### Authentication Flow
+
+```
+Client                     Backend                  Database
+  |                           |                         |
+  |-- POST /api/auth/login --> |                         |
+  |   {username, password}    |-- SELECT user WHERE --> |
+  |                           |   username = ?          |
+  |                           |<-- ApplicationUser -----|
+  |                           |                         |
+  |                           |-- VerifyHashedPassword  |
+  |                           |   (PBKDF2 compare)      |
+  |                           |                         |
+  |<-- 200 OK {token, role} --|
+  |                           |
+  |-- GET /api/transactions -->|
+  |   Authorization: Bearer.. |-- [Authorize(Role)] --> validate JWT claims
+  |<-- 200 [transactions] ----|
+```
+
+### Login Request/Response
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{"username": "client", "password": "Client123!"}
+```
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "username": "client",
+  "fullName": "Client User",
+  "role": "Client"
+}
+```
 
 ### Request/Response Examples
 
@@ -360,9 +441,27 @@ External Network
 
 ### Authentication & Authorization
 
-- **Current**: Hardcoded customer ID (1)
-- **Production**: JWT token-based authentication
-- **Future**: Role-based access control (RBAC)
+- **JWT Bearer (HS256)**: All endpoints (except `/api/health`) require `Authorization: Bearer <token>`
+- **Token expiry**: 24 hours; clients must re-login after expiry or after 5-minute inactivity
+- **Password storage**: PBKDF2 via `PasswordHasher<T>` (no plaintext passwords in database)
+- **Session storage**: Token stored in `sessionStorage`, never `localStorage` — cleared on logout and on 401 response
+- **Role enforcement**: `[Authorize(Roles = "Admin,Banker")]` on every restricted endpoint
+
+```csharp
+// Roles defined at controller/action level
+[Authorize(Roles = "Admin,Banker")]   // Banker management actions
+[Authorize(Roles = "Client")]          // Client-only actions (file dispute)
+[Authorize(Roles = "Admin")]           // Admin-only (delete)
+```
+
+### User Roles
+
+| Role | Description |
+|---|---|
+| Admin | Full access to all resources |
+| Banker | View all; update/lock disputes; manage transactions |
+| Client | View own transactions; file and view own disputes |
+| ReadOnly | Read-only access to transactions and disputes |
 
 ### CORS Configuration
 
