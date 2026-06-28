@@ -13,6 +13,8 @@ A full-stack web application for managing transaction disputes. Built with .NET 
 - **Dispute Status Card**: Clients can see the full status, reason, and resolution notes of an existing dispute
 - **Banker Dispute Management**: Bankers acquire a soft lock before editing a dispute to prevent concurrent edits
 - **Dispute History**: Track all filed disputes with status and resolution details
+- **Structured Logging**: `ILogger<T>` throughout controllers and repositories — login events, query counts, lock operations, and errors all emit structured log messages with named placeholders
+- **Global Exception Handling**: `GlobalExceptionFilter` catches all unhandled exceptions, logs them with a trace ID, and returns a standardised JSON error response — no raw stack traces are ever exposed to clients
 - **Responsive Design**: Mobile-friendly interface
 - **Production-Ready**: Docker containerization with PostgreSQL and deployment-ready configuration
 
@@ -201,6 +203,40 @@ docker-compose down -v
   "refundAmount": 125.50
 }
 ```
+
+## 🧪 Testing
+
+## 📋 Logging & Exception Handling
+
+### Structured Logging
+
+All controllers and repositories receive `ILogger<T>` via constructor injection. Log messages use named placeholders for structured output compatible with any .NET logging provider:
+
+| Level | Examples |
+|---|---|
+| `Information` | Login success, records fetched, dispute status updated |
+| `Warning` | Bad credentials, user not found, lock conflict |
+| `Error` | Unhandled exceptions (with full exception details and trace ID) |
+
+### Global Exception Filter
+
+`GlobalExceptionFilter` is registered as an MVC filter and handles all uncaught exceptions:
+
+- Logs the exception with the ASP.NET Core `TraceIdentifier`
+- Maps exception types to HTTP status codes (400 / 401 / 409 / 500)
+- Always returns a standardised JSON error body — raw stack traces are never sent to clients
+
+```json
+{
+  "statusCode": 500,
+  "message": "An unexpected error occurred",
+  "details": "...",
+  "traceId": "0HMVSD3ILPFJV:00000001",
+  "timestamp": "2026-06-28T10:30:00Z"
+}
+```
+
+---
 
 ## 🧪 Testing
 

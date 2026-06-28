@@ -482,16 +482,48 @@ External Network
 
 ### Error Handling
 
+All unhandled exceptions are caught by a global `GlobalExceptionFilter` (registered as an MVC filter) which:
+- Logs the exception with the ASP.NET Core trace ID using `ILogger<GlobalExceptionFilter>`
+- Maps exception types to HTTP status codes
+- Returns a standardised `ErrorResponse` JSON payload to the client (never raw stack traces)
+
+```csharp
+// Registration in Program.cs
+builder.Services.AddControllers(options =>
+    options.Filters.Add<GlobalExceptionFilter>());
 ```
-Request → Validation → Processing → Response
-		   ↓
-	BadRequest (400)
-		   ↓
-	Unauthorized (401)
-		   ↓
-	Forbidden (403)
-		   ↓
-	NotFound (404)
+
+#### Exception-to-Status-Code Mapping
+
+| Exception Type | HTTP Status | Response Message |
+|---|---|---|
+| `ArgumentNullException` / `ArgumentException` | 400 Bad Request | `"Invalid request data"` |
+| `UnauthorizedAccessException` | 401 Unauthorized | `"Unauthorized access"` |
+| `InvalidOperationException` | 409 Conflict | `"Operation not allowed"` |
+| Any other `Exception` | 500 Internal Server Error | `"An unexpected error occurred"` |
+
+#### Standardised Error Response
+
+```json
+{
+  "statusCode": 400,
+  "message": "Invalid request data",
+  "details": "Value cannot be null. (Parameter 'transactionId')",
+  "traceId": "0HMVSD3ILPFJV:00000001",
+  "timestamp": "2026-06-28T10:30:00Z"
+}
+```
+
+Individual controllers also include local `try/catch` blocks for predictable error paths (e.g. login failures) and log those events explicitly before returning controlled responses:
+
+```
+Request → Controller Action
+              │
+              ├─ Validation failure  → 400 Bad Request  (LogWarning)
+              ├─ User not found      → 401 Unauthorized (LogWarning)
+              ├─ Password mismatch   → 401 Unauthorized (LogWarning)
+              ├─ Unhandled exception → GlobalExceptionFilter → 500 (LogError)
+              └─ Success            → 200 OK             (LogInformation)
 ```
 
 ---
@@ -520,21 +552,54 @@ Request → Validation → Processing → Response
 
 ## 8. Monitoring & Logging
 
-### Application Insights Integration
+### Logging Infrastructure
+
+The application uses the built-in `Microsoft.Extensions.Logging` abstraction with `ILogger<T>` injected via constructor throughout the stack. In production environments this integrates with any registered provider (console, Application Insights, Seq, etc.).
+
 ```csharp
-builder.Services.AddApplicationInsightsTelemetry();
+// Injected in controllers and repositories
+public AuthController(IUserRepository repo,
+    IPasswordHasher<ApplicationUser> hasher,
+    IConfiguration config,
+    ILogger<AuthController> logger)   // <-- structured logger
 ```
 
-### Logging Strategy
-- **Info**: User actions, API calls
-- **Warning**: Validation failures, missing data
-- **Error**: Exceptions, database errors
-- **Debug**: Detailed trace information
+### Logging Coverage
+
+| Layer | What is logged |
+|---|---|
+| **Controllers** | Login attempts/success/failure, dispute lock acquire/release, status changes |
+| **Repositories** | Each query (record counts), EF Core errors |
+| **GlobalExceptionFilter** | All unhandled exceptions with trace ID |
+| **Program.cs** | Startup migration errors, JWT config validation errors |
+
+### Log Levels in Use
+
+| Level | When used |
+|---|---|
+| `LogInformation` | Successful operations — user logged in, records fetched, status updated |
+| `LogWarning` | Expected failure paths — bad credentials, missing user, lock conflicts |
+| `LogError` | Unexpected exceptions caught by `GlobalExceptionFilter` or local `catch` blocks |
+
+### Structured Logging Example
+
+```csharp
+// AuthController — message templates use named placeholders for structured output
+_logger.LogInformation("Login attempt for username: {Username}", request.Username);
+_logger.LogWarning("Login failed: user not found for username {Username}", request.Username);
+_logger.LogError(ex, "Unhandled exception. TraceId: {TraceId}", traceId);
+
+// DisputeRepository — operation-level tracing
+_logger.LogInformation("Fetching {Count} disputes for customer {CustomerId}", count, customerId);
+```
 
 ### Health Checks
+
 ```
 GET /api/health → {"status": "healthy"}
 ```
+
+The health endpoint is unauthenticated and suitable for load-balancer or container orchestration liveness probes.
 
 ---
 
