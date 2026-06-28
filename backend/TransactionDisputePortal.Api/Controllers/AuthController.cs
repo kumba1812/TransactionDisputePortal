@@ -5,7 +5,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using TransactionDisputePortal.Api.Models;
-using TransactionDisputePortal.Api.Repositories;
+using TransactionDisputePortal.Api.Repositories.User;
 
 namespace TransactionDisputePortal.Api.Controllers;
 

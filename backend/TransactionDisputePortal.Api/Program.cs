@@ -1,15 +1,12 @@
-using System;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using TransactionDisputePortal.Api.Data;
 using TransactionDisputePortal.Api.Models;
-using TransactionDisputePortal.Api.Repositories;
 using Microsoft.EntityFrameworkCore;
+using TransactionDisputePortal.Api.Repositories;
+using TransactionDisputePortal.Api.Repositories.User;
 
 var builder = WebApplication.CreateBuilder(args);
 

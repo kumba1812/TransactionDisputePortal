@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Moq;
 using TransactionDisputePortal.Api.Controllers;
 using TransactionDisputePortal.Api.Models;
-using TransactionDisputePortal.Api.Repositories;
+using TransactionDisputePortal.Api.Repositories.User;
 using TransactionDisputePortal.Api.Tests.Helpers;
 using Xunit;
 
