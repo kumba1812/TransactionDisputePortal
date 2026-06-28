@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using TransactionDisputePortal.Api.Models;
+using TransactionDisputePortal.Api.Integration;
 
 namespace TransactionDisputePortal.Api.Data;
 
@@ -10,8 +10,8 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    public DbSet<Transaction> Transactions { get; set; }
-    public DbSet<Dispute> Disputes { get; set; }
+    public DbSet<TransactionEntity> Transactions { get; set; }
+    public DbSet<DisputeEntity> Disputes { get; set; }
     public DbSet<ApplicationUser> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -19,7 +19,7 @@ public class ApplicationDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // Transaction configuration
-        modelBuilder.Entity<Transaction>(entity =>
+        modelBuilder.Entity<TransactionEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.TransactionId).IsRequired();
@@ -32,7 +32,7 @@ public class ApplicationDbContext : DbContext
         });
 
         // Dispute configuration
-        modelBuilder.Entity<Dispute>(entity =>
+        modelBuilder.Entity<DisputeEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Reason).IsRequired().HasMaxLength(100);
@@ -74,7 +74,7 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<ApplicationUser>().HasData(adminUser, bankerUser, banker2User, clientUser, readonlyUser);
 
-        var transactions = new List<Transaction>
+        var transactions = new List<TransactionEntity>
         {
             new()
             {
@@ -156,9 +156,9 @@ public class ApplicationDbContext : DbContext
             }
         };
 
-        modelBuilder.Entity<Transaction>().HasData(transactions);
+        modelBuilder.Entity<TransactionEntity>().HasData(transactions);
 
-        var disputes = new List<Dispute>
+        var disputes = new List<DisputeEntity>
         {
             new()
             {
@@ -188,6 +188,6 @@ public class ApplicationDbContext : DbContext
             }
         };
 
-        modelBuilder.Entity<Dispute>().HasData(disputes);
+        modelBuilder.Entity<DisputeEntity>().HasData(disputes);
     }
 }

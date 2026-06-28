@@ -1,15 +1,15 @@
-using TransactionDisputePortal.Api.Models;
+using TransactionDisputePortal.Api.Integration;
 
 namespace TransactionDisputePortal.Api.Repositories;
 
 public interface IDisputeRepository
 {
-    Task<IEnumerable<Dispute>> GetByCustomerIdAsync(int customerId);
-    Task<IEnumerable<Dispute>> GetAllAsync();
-    Task<IEnumerable<Dispute>> GetByTransactionIdAsync(int transactionId);
-    Task<Dispute?> GetByIdAsync(int id);
-    Task<Dispute> AddAsync(Dispute dispute);
-    Task UpdateAsync(Dispute dispute);
+    Task<IEnumerable<DisputeEntity>> GetByCustomerIdAsync(int customerId);
+    Task<IEnumerable<DisputeEntity>> GetAllAsync();
+    Task<IEnumerable<DisputeEntity>> GetByTransactionIdAsync(int transactionId);
+    Task<DisputeEntity?> GetByIdAsync(int id);
+    Task<DisputeEntity> AddAsync(DisputeEntity dispute);
+    Task UpdateAsync(DisputeEntity dispute);
     Task DeleteAsync(int id);
     Task UpdateLockAsync(int id, int? userId, string? name, DateTime? lockedAt);
 }

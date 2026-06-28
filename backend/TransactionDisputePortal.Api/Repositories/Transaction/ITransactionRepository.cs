@@ -1,13 +1,13 @@
-using TransactionDisputePortal.Api.Models;
+using TransactionDisputePortal.Api.Integration;
 
 namespace TransactionDisputePortal.Api.Repositories;
 
 public interface ITransactionRepository
 {
-    Task<IEnumerable<Transaction>> GetByCustomerIdAsync(int customerId);
-    Task<IEnumerable<Transaction>> GetAllAsync();
-    Task<Transaction?> GetByIdAsync(int id);
-    Task<Transaction> AddAsync(Transaction transaction);
-    Task UpdateAsync(Transaction transaction);
+    Task<IEnumerable<TransactionEntity>> GetByCustomerIdAsync(int customerId);
+    Task<IEnumerable<TransactionEntity>> GetAllAsync();
+    Task<TransactionEntity?> GetByIdAsync(int id);
+    Task<TransactionEntity> AddAsync(TransactionEntity transaction);
+    Task UpdateAsync(TransactionEntity transaction);
     Task DeleteAsync(int id);
 }

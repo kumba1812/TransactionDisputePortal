@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
+using TransactionDisputePortal.Api.Integration;
 using TransactionDisputePortal.Api.Models;
 using TransactionDisputePortal.Api.Repositories;
 using Xunit;
@@ -29,7 +30,7 @@ public class TransactionRepositoryTests
         return new ApplicationDbContext(options);
     }
 
-    private static Transaction SampleTx(int customerId = 1, string uid = "T-001") => new()
+    private static TransactionEntity SampleTx(int customerId = 1, string uid = "T-001") => new()
     {
         CustomerId = customerId,
         TransactionId = uid,
@@ -46,7 +47,7 @@ public class TransactionRepositoryTests
         var context = CreateContext();
         var repo = new TransactionRepository(context);
 
-        var tx = new Transaction
+        var tx = new TransactionEntity
         {
             CustomerId = 1,
             TransactionId = "TST001",
@@ -71,8 +72,8 @@ public class TransactionRepositoryTests
         var context = CreateContext();
         var repo = new TransactionRepository(context);
 
-        await repo.AddAsync(new Transaction { CustomerId = 2, TransactionId = "C2-1", Amount = 1m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "d" });
-        await repo.AddAsync(new Transaction { CustomerId = 2, TransactionId = "C2-2", Amount = 2m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "d" });
+        await repo.AddAsync(new TransactionEntity { CustomerId = 2, TransactionId = "C2-1", Amount = 1m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "d" });
+        await repo.AddAsync(new TransactionEntity { CustomerId = 2, TransactionId = "C2-2", Amount = 2m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "d" });
 
         var list = await repo.GetByCustomerIdAsync(2);
         Assert.Equal(2, list.Count());

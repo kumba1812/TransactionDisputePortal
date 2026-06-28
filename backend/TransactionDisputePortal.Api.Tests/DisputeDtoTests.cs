@@ -1,12 +1,11 @@
 using TransactionDisputePortal.Api.Dtos;
-using TransactionDisputePortal.Api.Models;
-using Xunit;
+using TransactionDisputePortal.Api.Integration;
 
 namespace TransactionDisputePortal.Api.Tests;
 
 public class DisputeDtoTests
 {
-    private static Dispute MakeDispute(DateTime? lockedAt) => new()
+    private static DisputeEntity MakeDispute(DateTime? lockedAt) => new()
     {
         Id = 1,
         TransactionIdFk = 1,
@@ -18,7 +17,7 @@ public class DisputeDtoTests
         LockedByUserId = lockedAt.HasValue ? 2 : null,
         LockedByName = lockedAt.HasValue ? "Banker One" : null,
         LockedAt = lockedAt,
-        Transaction = new Transaction
+        Transaction = new TransactionEntity
         {
             Id = 1,
             CustomerId = 4,

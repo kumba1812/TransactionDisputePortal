@@ -1,3 +1,4 @@
+using TransactionDisputePortal.Api.Integration;
 using TransactionDisputePortal.Api.Models;
 
 namespace TransactionDisputePortal.Api.Dtos

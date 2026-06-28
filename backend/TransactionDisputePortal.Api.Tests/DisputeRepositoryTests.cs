@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
+using TransactionDisputePortal.Api.Integration;
 using TransactionDisputePortal.Api.Models;
 using TransactionDisputePortal.Api.Repositories;
 using Xunit;
@@ -27,11 +28,11 @@ public class DisputeRepositoryTests
         return new ApplicationDbContext(options);
     }
 
-    private static async Task<(Transaction tx, Dispute dispute)> SeedOneAsync(
+    private static async Task<(TransactionEntity tx, DisputeEntity dispute)> SeedOneAsync(
         ITransactionRepository txRepo, IDisputeRepository dRepo,
         int customerId = 10, string reason = "Fraud")
     {
-        var tx = await txRepo.AddAsync(new Transaction
+        var tx = await txRepo.AddAsync(new TransactionEntity
         {
             CustomerId = customerId,
             TransactionId = Guid.NewGuid().ToString("N")[..8],
@@ -41,7 +42,7 @@ public class DisputeRepositoryTests
             Category = "Cat",
             Description = "d"
         });
-        var d = await dRepo.AddAsync(new Dispute
+        var d = await dRepo.AddAsync(new DisputeEntity
         {
             TransactionIdFk = tx.Id,
             CustomerId = tx.CustomerId,
@@ -60,8 +61,8 @@ public class DisputeRepositoryTests
         var txRepo = new TransactionRepository(context);
         var disputeRepo = new DisputeRepository(context);
 
-        var tx = await txRepo.AddAsync(new Transaction { CustomerId = 5, TransactionId = "D-1", Amount = 20m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "desc" });
-        var d = new Dispute { TransactionIdFk = tx.Id, CustomerId = tx.CustomerId, Reason = "Fraud", Description = "desc", CreatedAt = DateTime.UtcNow };
+        var tx = await txRepo.AddAsync(new TransactionEntity { CustomerId = 5, TransactionId = "D-1", Amount = 20m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "desc" });
+        var d = new DisputeEntity { TransactionIdFk = tx.Id, CustomerId = tx.CustomerId, Reason = "Fraud", Description = "desc", CreatedAt = DateTime.UtcNow };
 
         var added = await disputeRepo.AddAsync(d);
         var fetched = await disputeRepo.GetByIdAsync(added.Id);
@@ -78,10 +79,10 @@ public class DisputeRepositoryTests
         var txRepo = new TransactionRepository(context);
         var disputeRepo = new DisputeRepository(context);
 
-        var tx = await txRepo.AddAsync(new Transaction { CustomerId = 6, TransactionId = "D2-1", Amount = 5m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "desc" });
+        var tx = await txRepo.AddAsync(new TransactionEntity { CustomerId = 6, TransactionId = "D2-1", Amount = 5m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "desc" });
 
-        await disputeRepo.AddAsync(new Dispute { TransactionIdFk = tx.Id, CustomerId = tx.CustomerId, Reason = "Reason1", Description = "d1", CreatedAt = DateTime.UtcNow });
-        await disputeRepo.AddAsync(new Dispute { TransactionIdFk = tx.Id, CustomerId = tx.CustomerId, Reason = "Reason2", Description = "d2", CreatedAt = DateTime.UtcNow });
+        await disputeRepo.AddAsync(new DisputeEntity { TransactionIdFk = tx.Id, CustomerId = tx.CustomerId, Reason = "Reason1", Description = "d1", CreatedAt = DateTime.UtcNow });
+        await disputeRepo.AddAsync(new DisputeEntity { TransactionIdFk = tx.Id, CustomerId = tx.CustomerId, Reason = "Reason2", Description = "d2", CreatedAt = DateTime.UtcNow });
 
         var list = await disputeRepo.GetByTransactionIdAsync(tx.Id);
         Assert.Equal(2, list.Count());

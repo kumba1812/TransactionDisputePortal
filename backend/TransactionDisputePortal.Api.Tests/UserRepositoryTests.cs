@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
-using TransactionDisputePortal.Api.Models;
+using TransactionDisputePortal.Api.Integration;
 using TransactionDisputePortal.Api.Repositories.User;
 
 namespace TransactionDisputePortal.Api.Tests;

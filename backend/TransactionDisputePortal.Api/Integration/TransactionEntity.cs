@@ -1,12 +1,12 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace TransactionDisputePortal.Api.Models
+namespace TransactionDisputePortal.Api.Integration
 {
-    // Transaction model
-    public class Transaction
+    /// <summary>
+    /// Transaction model - moved to Models/Transaction/Transaction.cs for organization
+    /// </summary>
+    public class TransactionEntity
     {
         [Key]
         public int Id { get; set; }
@@ -34,7 +34,7 @@ namespace TransactionDisputePortal.Api.Models
         public DateTime CreatedAt { get; set; }
 
         // navigation
-        public List<Dispute> Disputes { get; set; } = new();
+        public List<DisputeEntity> Disputes { get; set; } = new();
     }
 
     public enum TransactionStatus

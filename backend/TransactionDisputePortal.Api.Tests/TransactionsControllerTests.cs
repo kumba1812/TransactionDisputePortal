@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using TransactionDisputePortal.Api.Controllers;
+using TransactionDisputePortal.Api.Integration;
 using TransactionDisputePortal.Api.Models;
+using TransactionDisputePortal.Api.Models.Transaction;
 using TransactionDisputePortal.Api.Repositories;
 using TransactionDisputePortal.Api.Tests.Helpers;
 using Xunit;
@@ -10,7 +12,7 @@ namespace TransactionDisputePortal.Api.Tests;
 
 public class TransactionsControllerTests
 {
-    private static Transaction SampleTx(int id = 1, int customerId = 1) => new()
+    private static TransactionEntity SampleTx(int id = 1, int customerId = 1) => new()
     {
         Id = id,
         CustomerId = customerId,
@@ -96,7 +98,7 @@ public class TransactionsControllerTests
     public async Task GetTransaction_ReturnsNotFound_WhenMissing()
     {
         var ctrl = Build(out var repo, "Admin");
-        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Transaction?)null);
+        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((TransactionEntity?)null);
 
         var result = await ctrl.GetTransaction(99);
 
@@ -132,7 +134,7 @@ public class TransactionsControllerTests
     {
         var ctrl = Build(out var repo, "Admin", userId: 1);
         var tx = SampleTx(10, 1);
-        repo.Setup(r => r.AddAsync(It.IsAny<Transaction>())).ReturnsAsync(tx);
+        repo.Setup(r => r.AddAsync(It.IsAny<TransactionEntity>())).ReturnsAsync(tx);
 
         var result = await ctrl.CreateTransaction(new CreateTransactionRequest
         {
@@ -144,7 +146,7 @@ public class TransactionsControllerTests
         });
 
         Assert.IsType<CreatedAtActionResult>(result);
-        repo.Verify(r => r.AddAsync(It.IsAny<Transaction>()), Times.Once);
+        repo.Verify(r => r.AddAsync(It.IsAny<TransactionEntity>()), Times.Once);
     }
 
     // ── UpdateTransaction ──────────────────────────────────────────────────────
@@ -163,14 +165,14 @@ public class TransactionsControllerTests
         });
 
         Assert.IsType<OkObjectResult>(result);
-        repo.Verify(r => r.UpdateAsync(It.IsAny<Transaction>()), Times.Once);
+        repo.Verify(r => r.UpdateAsync(It.IsAny<TransactionEntity>()), Times.Once);
     }
 
     [Fact]
     public async Task UpdateTransaction_ReturnsNotFound_WhenMissing()
     {
         var ctrl = Build(out var repo, "Admin");
-        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Transaction?)null);
+        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((TransactionEntity?)null);
 
         var result = await ctrl.UpdateTransaction(99, new UpdateTransactionRequest { Description = "x" });
 
@@ -195,7 +197,7 @@ public class TransactionsControllerTests
     public async Task DeleteTransaction_ReturnsNotFound_WhenMissing()
     {
         var ctrl = Build(out var repo, "Admin");
-        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Transaction?)null);
+        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((TransactionEntity?)null);
 
         var result = await ctrl.DeleteTransaction(99);
 

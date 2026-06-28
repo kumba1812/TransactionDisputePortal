@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using TransactionDisputePortal.Api.Controllers;
+using TransactionDisputePortal.Api.Integration;
 using TransactionDisputePortal.Api.Models;
+using TransactionDisputePortal.Api.Models.Dispute;
 using TransactionDisputePortal.Api.Repositories;
 using TransactionDisputePortal.Api.Tests.Helpers;
 using Xunit;
@@ -35,7 +37,7 @@ public class DisputesControllerTests
         return ctrl;
     }
 
-    private static Transaction SampleTx(int id = 1, int customerId = ClientId) => new()
+    private static TransactionEntity SampleTx(int id = 1, int customerId = ClientId) => new()
     {
         Id = id,
         CustomerId = customerId,
@@ -47,7 +49,7 @@ public class DisputesControllerTests
         Category = "Cat"
     };
 
-    private static Dispute SampleDispute(int id = 1, int customerId = ClientId,
+    private static DisputeEntity SampleDispute(int id = 1, int customerId = ClientId,
         int? lockedByUserId = null, string? lockedByName = null, DateTime? lockedAt = null) => new()
     {
         Id = id,
@@ -109,7 +111,7 @@ public class DisputesControllerTests
     public async Task GetDispute_ReturnsNotFound_WhenMissing()
     {
         var ctrl = Build(out var repo, out _, "Admin", AdminId);
-        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Dispute?)null);
+        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((DisputeEntity?)null);
 
         var result = await ctrl.GetDispute(99);
 
@@ -135,8 +137,8 @@ public class DisputesControllerTests
         var ctrl = Build(out var repo, out var txRepo, "Client", ClientId);
         var tx = SampleTx(1, ClientId);
         txRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(tx);
-        repo.Setup(r => r.GetByTransactionIdAsync(1)).ReturnsAsync(Array.Empty<Dispute>());
-        repo.Setup(r => r.AddAsync(It.IsAny<Dispute>())).ReturnsAsync(SampleDispute());
+        repo.Setup(r => r.GetByTransactionIdAsync(1)).ReturnsAsync(Array.Empty<DisputeEntity>());
+        repo.Setup(r => r.AddAsync(It.IsAny<DisputeEntity>())).ReturnsAsync(SampleDispute());
 
         var result = await ctrl.CreateDispute(new CreateDisputeRequest
         {
@@ -171,7 +173,7 @@ public class DisputesControllerTests
         // Client 4 tries to dispute transaction owned by customer 99
         var ctrl = Build(out var repo, out var txRepo, "Client", ClientId);
         txRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(SampleTx(1, customerId: 99));
-        repo.Setup(r => r.GetByTransactionIdAsync(1)).ReturnsAsync(Array.Empty<Dispute>());
+        repo.Setup(r => r.GetByTransactionIdAsync(1)).ReturnsAsync(Array.Empty<DisputeEntity>());
 
         var result = await ctrl.CreateDispute(new CreateDisputeRequest
         {
@@ -199,7 +201,7 @@ public class DisputesControllerTests
         });
 
         Assert.IsType<OkObjectResult>(result);
-        repo.Verify(r => r.UpdateAsync(It.IsAny<Dispute>()), Times.Once);
+        repo.Verify(r => r.UpdateAsync(It.IsAny<DisputeEntity>()), Times.Once);
     }
 
     [Fact]
@@ -214,7 +216,7 @@ public class DisputesControllerTests
         });
 
         Assert.IsType<ConflictObjectResult>(result);
-        repo.Verify(r => r.UpdateAsync(It.IsAny<Dispute>()), Times.Never);
+        repo.Verify(r => r.UpdateAsync(It.IsAny<DisputeEntity>()), Times.Never);
     }
 
     [Fact]
@@ -240,9 +242,9 @@ public class DisputesControllerTests
         var ctrl = Build(out var repo, out _, "Banker", BankerId);
         var dispute = SampleDispute(1, lockedByUserId: BankerId, lockedAt: DateTime.UtcNow);
         repo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(dispute);
-        Dispute? savedDispute = null;
-        repo.Setup(r => r.UpdateAsync(It.IsAny<Dispute>()))
-            .Callback<Dispute>(d => savedDispute = d)
+        DisputeEntity? savedDispute = null;
+        repo.Setup(r => r.UpdateAsync(It.IsAny<DisputeEntity>()))
+            .Callback<DisputeEntity>(d => savedDispute = d)
             .Returns(Task.CompletedTask);
 
         await ctrl.UpdateDispute(1, new UpdateDisputeRequest { Status = DisputeStatus.Resolved });
@@ -302,7 +304,7 @@ public class DisputesControllerTests
     public async Task DeleteDispute_Returns404_WhenMissing()
     {
         var ctrl = Build(out var repo, out _, "Admin", AdminId);
-        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Dispute?)null);
+        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((DisputeEntity?)null);
 
         var result = await ctrl.DeleteDispute(99);
 
@@ -388,7 +390,7 @@ public class DisputesControllerTests
     public async Task AcquireLock_Returns404_WhenDisputeMissing()
     {
         var ctrl = Build(out var repo, out _, "Banker", BankerId);
-        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Dispute?)null);
+        repo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((DisputeEntity?)null);
 
         var result = await ctrl.AcquireLock(99);
 

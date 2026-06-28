@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace TransactionDisputePortal.Api.Models;
+namespace TransactionDisputePortal.Api.Integration;
 
 public class ApplicationUser
 {

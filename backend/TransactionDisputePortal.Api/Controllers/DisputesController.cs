@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TransactionDisputePortal.Api.Dtos;
+using TransactionDisputePortal.Api.Integration;
 using TransactionDisputePortal.Api.Models;
+using TransactionDisputePortal.Api.Models.Dispute;
 using TransactionDisputePortal.Api.Repositories;
 
 namespace TransactionDisputePortal.Api.Controllers;
@@ -15,6 +17,7 @@ public class DisputesController : ControllerBase
     private readonly IDisputeRepository _disputeRepository;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IConfiguration _config;
+    private readonly ILogger<DisputesController> _logger;
 
     private int GetUserId()
     {
@@ -32,201 +35,318 @@ public class DisputesController : ControllerBase
     public DisputesController(
         IDisputeRepository disputeRepository,
         ITransactionRepository transactionRepository,
-        IConfiguration config)
+        IConfiguration config,
+        ILogger<DisputesController> logger)
     {
         _disputeRepository = disputeRepository;
         _transactionRepository = transactionRepository;
         _config = config;
+        _logger = logger;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetDisputes()
     {
-        IEnumerable<Dispute> disputes;
-
-        if (IsClient())
+        try
         {
-            var userId = GetUserId();
-            if (userId <= 0) return Unauthorized();
-            disputes = await _disputeRepository.GetByCustomerIdAsync(userId);
-        }
-        else
-        {
-            disputes = await _disputeRepository.GetAllAsync();
-        }
+            _logger.LogInformation("GetDisputes called by user {UserId}, role: {Role}", GetUserId(), User.FindFirst(ClaimTypes.Role)?.Value);
 
-        return Ok(disputes.Select(d => new DisputeDto(d)).ToList());
+            IEnumerable<DisputeEntity> disputes;
+
+            if (IsClient())
+            {
+                var userId = GetUserId();
+                if (userId <= 0)
+                {
+                    _logger.LogWarning("Invalid user ID for client role");
+                    return Unauthorized();
+                }
+                disputes = await _disputeRepository.GetByCustomerIdAsync(userId);
+                _logger.LogInformation("Retrieved {Count} disputes for customer {CustomerId}", disputes.Count(), userId);
+            }
+            else
+            {
+                disputes = await _disputeRepository.GetAllAsync();
+                _logger.LogInformation("Retrieved {Count} disputes for admin/banker", disputes.Count());
+            }
+
+            return Ok(disputes.Select(d => new DisputeDto(d)).ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving disputes");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error retrieving disputes" });
+        }
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetDispute(int id)
     {
-        var dispute = await _disputeRepository.GetByIdAsync(id);
-        if (dispute == null)
-            return NotFound(new { message = "Dispute not found" });
+        try
+        {
+            _logger.LogInformation("GetDispute called for dispute {DisputeId} by user {UserId}", id, GetUserId());
 
-        if (IsClient() && dispute.CustomerId != GetUserId())
-            return Forbid();
+            var dispute = await _disputeRepository.GetByIdAsync(id);
+            if (dispute == null)
+            {
+                _logger.LogWarning("Dispute {DisputeId} not found", id);
+                return NotFound(new { message = "Dispute not found" });
+            }
 
-        return Ok(new DisputeDto(dispute));
+            if (IsClient() && dispute.CustomerId != GetUserId())
+            {
+                _logger.LogWarning("Client user {UserId} attempted to access dispute {DisputeId} belonging to customer {CustomerId}", GetUserId(), id, dispute.CustomerId);
+                return Forbid();
+            }
+
+            return Ok(new DisputeDto(dispute));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving dispute {DisputeId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error retrieving dispute" });
+        }
     }
 
     [HttpGet("transaction/{transactionId}")]
     public async Task<IActionResult> GetDisputesByTransaction(int transactionId)
     {
-        var disputes = await _disputeRepository.GetByTransactionIdAsync(transactionId);
-        return Ok(disputes.Select(d => new DisputeDto(d)).ToList());
+        try
+        {
+            _logger.LogInformation("GetDisputesByTransaction called for transaction {TransactionId}", transactionId);
+
+            var disputes = await _disputeRepository.GetByTransactionIdAsync(transactionId);
+            _logger.LogInformation("Retrieved {Count} disputes for transaction {TransactionId}", disputes.Count(), transactionId);
+            return Ok(disputes.Select(d => new DisputeDto(d)).ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving disputes for transaction {TransactionId}", transactionId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error retrieving disputes" });
+        }
     }
 
     [HttpPost]
     [Authorize(Roles = "Admin,Client")]
-    public async Task<IActionResult> CreateDispute([FromBody] CreateDisputeRequest request)
+    public async Task<IActionResult> CreateDispute([FromBody] Models.Dispute.CreateDisputeRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var userId = GetUserId();
-        if (userId <= 0) return Unauthorized();
-
-        var transaction = await _transactionRepository.GetByIdAsync(request.TransactionId);
-        if (transaction == null || transaction.CustomerId != userId)
-            return BadRequest(new { message = "Invalid transaction" });
-
-        var existingDisputes = await _disputeRepository.GetByTransactionIdAsync(request.TransactionId);
-        if (existingDisputes.Any())
-            return BadRequest(new { message = "A dispute already exists for this transaction" });
-
-        var dispute = new Dispute
+        try
         {
-            TransactionIdFk = request.TransactionId,
-            CustomerId = userId,
-            Reason = request.Reason,
-            Description = request.Description,
-            Status = DisputeStatus.Pending,
-            CreatedAt = DateTime.UtcNow,
-            RefundAmount = transaction.Amount
-        };
+            _logger.LogInformation("CreateDispute called by user {UserId} for transaction {TransactionId}", GetUserId(), request.TransactionId);
 
-        var result = await _disputeRepository.AddAsync(dispute);
-        return CreatedAtAction(nameof(GetDispute), new { id = result.Id }, new DisputeDto(result));
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state for CreateDispute");
+                return BadRequest(ModelState);
+            }
+
+            var userId = GetUserId();
+            if (userId <= 0)
+            {
+                _logger.LogWarning("Invalid user ID for dispute creation");
+                return Unauthorized();
+            }
+
+            var transaction = await _transactionRepository.GetByIdAsync(request.TransactionId);
+            if (transaction == null || transaction.CustomerId != userId)
+            {
+                _logger.LogWarning("Invalid transaction {TransactionId} for user {UserId}", request.TransactionId, userId);
+                return BadRequest(new { message = "Invalid transaction" });
+            }
+
+            var existingDisputes = await _disputeRepository.GetByTransactionIdAsync(request.TransactionId);
+            if (existingDisputes.Any())
+            {
+                _logger.LogWarning("Dispute already exists for transaction {TransactionId}", request.TransactionId);
+                return BadRequest(new { message = "A dispute already exists for this transaction" });
+            }
+
+            var dispute = new DisputeEntity
+            {
+                TransactionIdFk = request.TransactionId,
+                CustomerId = userId,
+                Reason = request.Reason,
+                Description = request.Description,
+                Status = DisputeStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                RefundAmount = transaction.Amount
+            };
+
+            var result = await _disputeRepository.AddAsync(dispute);
+            _logger.LogInformation("Dispute {DisputeId} created successfully by user {UserId}", result.Id, userId);
+            return CreatedAtAction(nameof(GetDispute), new { id = result.Id }, new DisputeDto(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating dispute for transaction {TransactionId}", request?.TransactionId);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error creating dispute" });
+        }
     }
 
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin,Banker")]
     public async Task<IActionResult> UpdateDispute(int id, [FromBody] UpdateDisputeRequest request)
     {
-        var dispute = await _disputeRepository.GetByIdAsync(id);
-        if (dispute == null)
-            return NotFound(new { message = "Dispute not found" });
+        try
+        {
+            _logger.LogInformation("UpdateDispute called for dispute {DisputeId} by user {UserId}", id, GetUserId());
 
-        // Verify the caller holds an active lock
-        var userId = GetUserId();
-        bool lockActive = dispute.LockedByUserId.HasValue &&
-                          dispute.LockedAt.HasValue &&
-                          dispute.LockedAt.Value.AddMinutes(LockExpiryMinutes) > DateTime.UtcNow;
+            var dispute = await _disputeRepository.GetByIdAsync(id);
+            if (dispute == null)
+            {
+                _logger.LogWarning("Dispute {DisputeId} not found for update", id);
+                return NotFound(new { message = "Dispute not found" });
+            }
 
-        if (!lockActive || dispute.LockedByUserId != userId)
-            return Conflict(new { message = "You do not hold the lock for this dispute. Please open it for editing first." });
+            var userId = GetUserId();
+            bool lockActive = dispute.LockedByUserId.HasValue &&
+                              dispute.LockedAt.HasValue &&
+                              dispute.LockedAt.Value.AddMinutes(LockExpiryMinutes) > DateTime.UtcNow;
 
-        dispute.Status = request.Status;
-        dispute.ResolutionNotes = request.ResolutionNotes ?? dispute.ResolutionNotes;
+            if (!lockActive || dispute.LockedByUserId != userId)
+            {
+                _logger.LogWarning("User {UserId} attempted to update dispute {DisputeId} without lock", userId, id);
+                return Conflict(new { message = "You do not hold the lock for this dispute. Please open it for editing first." });
+            }
 
-        if (request.Status == DisputeStatus.Resolved || request.Status == DisputeStatus.Refunded)
-            dispute.ResolvedAt = DateTime.UtcNow;
+            dispute.Status = request.Status;
+            dispute.ResolutionNotes = request.ResolutionNotes ?? dispute.ResolutionNotes;
 
-        // Clear lock atomically with the update
-        dispute.LockedByUserId = null;
-        dispute.LockedByName = null;
-        dispute.LockedAt = null;
+            if (request.Status == DisputeStatus.Resolved || request.Status == DisputeStatus.Refunded)
+                dispute.ResolvedAt = DateTime.UtcNow;
 
-        await _disputeRepository.UpdateAsync(dispute);
-        return Ok(new DisputeDto(dispute));
+            dispute.LockedByUserId = null;
+            dispute.LockedByName = null;
+            dispute.LockedAt = null;
+
+            await _disputeRepository.UpdateAsync(dispute);
+            _logger.LogInformation("Dispute {DisputeId} updated successfully. New status: {Status}", id, request.Status);
+            return Ok(new DisputeDto(dispute));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating dispute {DisputeId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error updating dispute" });
+        }
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDispute(int id)
     {
-        var dispute = await _disputeRepository.GetByIdAsync(id);
-        if (dispute == null)
-            return NotFound(new { message = "Dispute not found" });
+        try
+        {
+            _logger.LogInformation("DeleteDispute called for dispute {DisputeId} by user {UserId}", id, GetUserId());
 
-        var userId = GetUserId();
+            var dispute = await _disputeRepository.GetByIdAsync(id);
+            if (dispute == null)
+            {
+                _logger.LogWarning("Dispute {DisputeId} not found for deletion", id);
+                return NotFound(new { message = "Dispute not found" });
+            }
 
-        // Admin can delete any; Client can only delete their own
-        if (!User.IsInRole("Admin") && dispute.CustomerId != userId)
-            return Forbid();
+            var userId = GetUserId();
 
-        // Bankers cannot delete disputes
-        if (User.IsInRole("Banker") && !User.IsInRole("Admin"))
-            return Forbid();
+            if (!User.IsInRole("Admin") && dispute.CustomerId != userId)
+            {
+                _logger.LogWarning("User {UserId} attempted to delete dispute {DisputeId} without permission", userId, id);
+                return Forbid();
+            }
 
-        await _disputeRepository.DeleteAsync(id);
-        return NoContent();
+            if (User.IsInRole("Banker") && !User.IsInRole("Admin"))
+            {
+                _logger.LogWarning("Banker user {UserId} attempted to delete dispute {DisputeId}", userId, id);
+                return Forbid();
+            }
+
+            await _disputeRepository.DeleteAsync(id);
+            _logger.LogInformation("Dispute {DisputeId} deleted successfully by user {UserId}", id, userId);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting dispute {DisputeId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error deleting dispute" });
+        }
     }
-
-    // â”€â”€ Soft-Lock Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [HttpPost("{id}/lock")]
     [Authorize(Roles = "Admin,Banker")]
     public async Task<IActionResult> AcquireLock(int id)
     {
-        var dispute = await _disputeRepository.GetByIdAsync(id);
-        if (dispute == null)
-            return NotFound(new { message = "Dispute not found" });
-
-        var userId = GetUserId();
-        var now = DateTime.UtcNow;
-
-        bool lockHeldByAnother = dispute.LockedByUserId.HasValue &&
-                                  dispute.LockedByUserId != userId &&
-                                  dispute.LockedAt.HasValue &&
-                                  dispute.LockedAt.Value.AddMinutes(LockExpiryMinutes) > now;
-
-        if (lockHeldByAnother)
+        try
         {
-            return Conflict(new
+            _logger.LogInformation("AcquireLock called for dispute {DisputeId} by user {UserId}", id, GetUserId());
+
+            var dispute = await _disputeRepository.GetByIdAsync(id);
+            if (dispute == null)
             {
-                message = $"This dispute is currently being reviewed by {dispute.LockedByName}.",
-                lockedByName = dispute.LockedByName,
-                lockedAt = dispute.LockedAt
-            });
+                _logger.LogWarning("Dispute {DisputeId} not found for lock acquisition", id);
+                return NotFound(new { message = "Dispute not found" });
+            }
+
+            var userId = GetUserId();
+            var now = DateTime.UtcNow;
+
+            bool lockHeldByAnother = dispute.LockedByUserId.HasValue &&
+                                      dispute.LockedByUserId != userId &&
+                                      dispute.LockedAt.HasValue &&
+                                      dispute.LockedAt.Value.AddMinutes(LockExpiryMinutes) > now;
+
+            if (lockHeldByAnother)
+            {
+                _logger.LogWarning("User {UserId} cannot acquire lock on dispute {DisputeId} - already locked by {LockedByName}", userId, id, dispute.LockedByName);
+                return Conflict(new
+                {
+                    message = $"This dispute is currently being reviewed by {dispute.LockedByName}.",
+                    lockedByName = dispute.LockedByName,
+                    lockedAt = dispute.LockedAt
+                });
+            }
+
+            await _disputeRepository.UpdateLockAsync(id, userId, GetUserFullName(), now);
+            _logger.LogInformation("Lock acquired on dispute {DisputeId} by user {UserId}", id, userId);
+
+            var updated = await _disputeRepository.GetByIdAsync(id);
+            return Ok(new DisputeDto(updated!));
         }
-
-        await _disputeRepository.UpdateLockAsync(id, userId, GetUserFullName(), now);
-
-        // Return updated dispute
-        var updated = await _disputeRepository.GetByIdAsync(id);
-        return Ok(new DisputeDto(updated!));
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error acquiring lock on dispute {DisputeId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error acquiring lock" });
+        }
     }
 
     [HttpDelete("{id}/lock")]
     [Authorize(Roles = "Admin,Banker")]
     public async Task<IActionResult> ReleaseLock(int id)
     {
-        var dispute = await _disputeRepository.GetByIdAsync(id);
-        if (dispute == null)
-            return NotFound(new { message = "Dispute not found" });
+        try
+        {
+            _logger.LogInformation("ReleaseLock called for dispute {DisputeId} by user {UserId}", id, GetUserId());
 
-        var userId = GetUserId();
+            var dispute = await _disputeRepository.GetByIdAsync(id);
+            if (dispute == null)
+            {
+                _logger.LogWarning("Dispute {DisputeId} not found for lock release", id);
+                return NotFound(new { message = "Dispute not found" });
+            }
 
-        // Only the lock owner or Admin may release
-        if (dispute.LockedByUserId != userId && !User.IsInRole("Admin"))
-            return Forbid();
+            var userId = GetUserId();
 
-        await _disputeRepository.UpdateLockAsync(id, null, null, null);
-        return NoContent();
+            if (dispute.LockedByUserId != userId && !User.IsInRole("Admin"))
+            {
+                _logger.LogWarning("User {UserId} attempted to release lock on dispute {DisputeId} without permission", userId, id);
+                return Forbid();
+            }
+
+            await _disputeRepository.UpdateLockAsync(id, null, null, null);
+            _logger.LogInformation("Lock released on dispute {DisputeId} by user {UserId}", id, userId);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error releasing lock on dispute {DisputeId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error releasing lock" });
+        }
     }
-}
-
-public class CreateDisputeRequest
-{
-    public int TransactionId { get; set; }
-    public string Reason { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-}
-
-public class UpdateDisputeRequest
-{
-    public DisputeStatus Status { get; set; }
-    public string? ResolutionNotes { get; set; }
 }

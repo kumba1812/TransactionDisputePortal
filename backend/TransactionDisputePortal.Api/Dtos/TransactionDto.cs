@@ -1,3 +1,5 @@
+using TransactionDisputePortal.Api.Integration;
+
 namespace TransactionDisputePortal.Api.Dtos;
 
 public class TransactionDto
@@ -16,7 +18,7 @@ public class TransactionDto
 
     public TransactionDto() { }
 
-    public TransactionDto(Models.Transaction transaction)
+    public TransactionDto(TransactionEntity transaction)
     {
         Id = transaction.Id;
         CustomerId = transaction.CustomerId;

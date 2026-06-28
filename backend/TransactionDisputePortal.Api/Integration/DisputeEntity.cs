@@ -1,12 +1,12 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace TransactionDisputePortal.Api.Models
+namespace TransactionDisputePortal.Api.Integration
 {
-    // Dispute model
-    public class Dispute
+    /// <summary>
+    /// Dispute model - moved to Models/Dispute/Dispute.cs for organization
+    /// </summary>
+    public class DisputeEntity
     {
         [Key]
         public int Id { get; set; }
@@ -50,7 +50,7 @@ namespace TransactionDisputePortal.Api.Models
         public DateTime? LockedAt { get; set; }
 
         [ForeignKey("TransactionIdFk")]
-        public Transaction Transaction { get; set; } = null!;
+        public TransactionEntity Transaction { get; set; } = null!;
     }
 
     public enum DisputeStatus

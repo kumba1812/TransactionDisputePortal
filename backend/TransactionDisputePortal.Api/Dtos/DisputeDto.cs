@@ -1,4 +1,7 @@
-﻿namespace TransactionDisputePortal.Api.Dtos;
+﻿using TransactionDisputePortal.Api.Integration;
+using TransactionDisputePortal.Api.Models;
+
+namespace TransactionDisputePortal.Api.Dtos;
 
 public class DisputeDto
 {
@@ -24,7 +27,7 @@ public class DisputeDto
 
     public DisputeDto() { }
 
-    public DisputeDto(Models.Dispute dispute)
+    public DisputeDto(DisputeEntity dispute)
     {
         Id = dispute.Id;
         TransactionId = dispute.TransactionId;
