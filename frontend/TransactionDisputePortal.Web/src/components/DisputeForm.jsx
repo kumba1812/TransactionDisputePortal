@@ -17,7 +17,7 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
   const [success, setSuccess] = useState(false);
   const [existingDisputes, setExistingDisputes] = useState([]);
 
-  const bankingReasons = [
+  const reasons = [
     'Unauthorized Transaction',
     'Duplicate Charge',
     'Incorrect Amount',
@@ -164,7 +164,7 @@ export function DisputeForm({ transaction, onDisputeCreated, onCancel }) {
               required
             >
               <option value="">Select a reason...</option>
-              {bankingReasons.map(reason => (
+              {reasons.map(reason => (
                 <option key={reason} value={reason}>{reason}</option>
               ))}
             </select>

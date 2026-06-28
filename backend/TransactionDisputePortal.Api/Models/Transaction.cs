@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TransactionDisputePortal.Api.Models
 {
-    // Banking-focused transaction model
+    // Transaction model
     public class Transaction
     {
         [Key]
