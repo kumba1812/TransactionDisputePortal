@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TransactionDisputePortal.Api.Controllers;
 using TransactionDisputePortal.Api.Integration;
@@ -27,7 +28,7 @@ public class TransactionsControllerTests
     private static TransactionsController Build(out Mock<ITransactionRepository> repoMock, string role = "Admin", int userId = 1)
     {
         repoMock = new Mock<ITransactionRepository>();
-        var ctrl = new TransactionsController(repoMock.Object);
+        var ctrl = new TransactionsController(repoMock.Object, NullLogger<TransactionsController>.Instance);
         ControllerTestHelper.SetUser(ctrl, role, userId);
         return ctrl;
     }

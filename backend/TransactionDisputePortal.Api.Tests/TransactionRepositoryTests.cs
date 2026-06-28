@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
 using TransactionDisputePortal.Api.Integration;
@@ -45,7 +46,7 @@ public class TransactionRepositoryTests
     public async Task AddAndGetTransaction()
     {
         var context = CreateContext();
-        var repo = new TransactionRepository(context);
+        var repo = new TransactionRepository(context, NullLogger<TransactionRepository>.Instance);
 
         var tx = new TransactionEntity
         {
@@ -70,7 +71,7 @@ public class TransactionRepositoryTests
     public async Task GetByCustomerReturnsTransactions()
     {
         var context = CreateContext();
-        var repo = new TransactionRepository(context);
+        var repo = new TransactionRepository(context, NullLogger<TransactionRepository>.Instance);
 
         await repo.AddAsync(new TransactionEntity { CustomerId = 2, TransactionId = "C2-1", Amount = 1m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "d" });
         await repo.AddAsync(new TransactionEntity { CustomerId = 2, TransactionId = "C2-2", Amount = 2m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "d" });
@@ -82,7 +83,7 @@ public class TransactionRepositoryTests
     [Fact]
     public async Task GetById_ReturnsNull_WhenMissing()
     {
-        var repo = new TransactionRepository(CreateFreshContext());
+        var repo = new TransactionRepository(CreateFreshContext(), NullLogger<TransactionRepository>.Instance);
         var result = await repo.GetByIdAsync(99999);
         Assert.Null(result);
     }
@@ -91,7 +92,7 @@ public class TransactionRepositoryTests
     public async Task GetAll_ReturnsAllTransactions()
     {
         var context = CreateFreshContext();
-        var repo = new TransactionRepository(context);
+        var repo = new TransactionRepository(context, NullLogger<TransactionRepository>.Instance);
 
         await repo.AddAsync(SampleTx(1, "GA-1"));
         await repo.AddAsync(SampleTx(2, "GA-2"));
@@ -105,7 +106,7 @@ public class TransactionRepositoryTests
     public async Task UpdateTransaction_PersistsChanges()
     {
         var context = CreateFreshContext();
-        var repo = new TransactionRepository(context);
+        var repo = new TransactionRepository(context, NullLogger<TransactionRepository>.Instance);
 
         var added = await repo.AddAsync(SampleTx(1, "UP-1"));
         added.Description = "Updated";
@@ -119,7 +120,7 @@ public class TransactionRepositoryTests
     public async Task DeleteTransaction_RemovesFromDb()
     {
         var context = CreateFreshContext();
-        var repo = new TransactionRepository(context);
+        var repo = new TransactionRepository(context, NullLogger<TransactionRepository>.Instance);
 
         var added = await repo.AddAsync(SampleTx(1, "DEL-1"));
         await repo.DeleteAsync(added.Id);

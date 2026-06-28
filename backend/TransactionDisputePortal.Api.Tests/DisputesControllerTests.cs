@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TransactionDisputePortal.Api.Controllers;
 using TransactionDisputePortal.Api.Integration;
@@ -32,7 +33,7 @@ public class DisputesControllerTests
     {
         disputeRepo = new Mock<IDisputeRepository>();
         txRepo = new Mock<ITransactionRepository>();
-        var ctrl = new DisputesController(disputeRepo.Object, txRepo.Object, BuildConfig());
+        var ctrl = new DisputesController(disputeRepo.Object, txRepo.Object, BuildConfig(), NullLogger<DisputesController>.Instance);
         ControllerTestHelper.SetUser(ctrl, role, userId, "Banker One");
         return ctrl;
     }

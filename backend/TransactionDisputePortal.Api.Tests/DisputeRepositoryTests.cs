@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
 using TransactionDisputePortal.Api.Integration;
@@ -58,8 +59,8 @@ public class DisputeRepositoryTests
     public async Task AddAndGetDispute()
     {
         var context = CreateContext();
-        var txRepo = new TransactionRepository(context);
-        var disputeRepo = new DisputeRepository(context);
+        var txRepo = new TransactionRepository(context, NullLogger<TransactionRepository>.Instance);
+        var disputeRepo = new DisputeRepository(context, NullLogger<DisputeRepository>.Instance);
 
         var tx = await txRepo.AddAsync(new TransactionEntity { CustomerId = 5, TransactionId = "D-1", Amount = 20m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "desc" });
         var d = new DisputeEntity { TransactionIdFk = tx.Id, CustomerId = tx.CustomerId, Reason = "Fraud", Description = "desc", CreatedAt = DateTime.UtcNow };
@@ -76,8 +77,8 @@ public class DisputeRepositoryTests
     public async Task GetByTransactionIdReturnsDisputes()
     {
         var context = CreateContext();
-        var txRepo = new TransactionRepository(context);
-        var disputeRepo = new DisputeRepository(context);
+        var txRepo = new TransactionRepository(context, NullLogger<TransactionRepository>.Instance);
+        var disputeRepo = new DisputeRepository(context, NullLogger<DisputeRepository>.Instance);
 
         var tx = await txRepo.AddAsync(new TransactionEntity { CustomerId = 6, TransactionId = "D2-1", Amount = 5m, TransactionDate = DateTime.UtcNow, Merchant = "M", Category = "Cat", Description = "desc" });
 
@@ -92,8 +93,8 @@ public class DisputeRepositoryTests
     public async Task GetAll_ReturnsAllDisputes()
     {
         var ctx = CreateFreshContext();
-        var txRepo = new TransactionRepository(ctx);
-        var repo = new DisputeRepository(ctx);
+        var txRepo = new TransactionRepository(ctx, NullLogger<TransactionRepository>.Instance);
+        var repo = new DisputeRepository(ctx, NullLogger<DisputeRepository>.Instance);
 
         await SeedOneAsync(txRepo, repo, customerId: 11, reason: "R1");
         await SeedOneAsync(txRepo, repo, customerId: 12, reason: "R2");
@@ -106,8 +107,8 @@ public class DisputeRepositoryTests
     public async Task GetByCustomerId_FiltersCorrectly()
     {
         var ctx = CreateFreshContext();
-        var txRepo = new TransactionRepository(ctx);
-        var repo = new DisputeRepository(ctx);
+        var txRepo = new TransactionRepository(ctx, NullLogger<TransactionRepository>.Instance);
+        var repo = new DisputeRepository(ctx, NullLogger<DisputeRepository>.Instance);
 
         await SeedOneAsync(txRepo, repo, customerId: 20, reason: "A");
         await SeedOneAsync(txRepo, repo, customerId: 20, reason: "B");
@@ -124,8 +125,8 @@ public class DisputeRepositoryTests
     public async Task UpdateDispute_PersistsStatusChange()
     {
         var ctx = CreateFreshContext();
-        var txRepo = new TransactionRepository(ctx);
-        var repo = new DisputeRepository(ctx);
+        var txRepo = new TransactionRepository(ctx, NullLogger<TransactionRepository>.Instance);
+        var repo = new DisputeRepository(ctx, NullLogger<DisputeRepository>.Instance);
 
         var (_, dispute) = await SeedOneAsync(txRepo, repo);
         dispute.Status = DisputeStatus.UnderReview;
@@ -139,8 +140,8 @@ public class DisputeRepositoryTests
     public async Task DeleteDispute_RemovesFromDb()
     {
         var ctx = CreateFreshContext();
-        var txRepo = new TransactionRepository(ctx);
-        var repo = new DisputeRepository(ctx);
+        var txRepo = new TransactionRepository(ctx, NullLogger<TransactionRepository>.Instance);
+        var repo = new DisputeRepository(ctx, NullLogger<DisputeRepository>.Instance);
 
         var (_, dispute) = await SeedOneAsync(txRepo, repo);
         await repo.DeleteAsync(dispute.Id);
@@ -153,8 +154,8 @@ public class DisputeRepositoryTests
     public async Task UpdateLock_SetsLockFields()
     {
         var ctx = CreateFreshContext();
-        var txRepo = new TransactionRepository(ctx);
-        var repo = new DisputeRepository(ctx);
+        var txRepo = new TransactionRepository(ctx, NullLogger<TransactionRepository>.Instance);
+        var repo = new DisputeRepository(ctx, NullLogger<DisputeRepository>.Instance);
 
         var (_, dispute) = await SeedOneAsync(txRepo, repo);
         var lockTime = DateTime.UtcNow;
@@ -171,8 +172,8 @@ public class DisputeRepositoryTests
     public async Task UpdateLock_ClearsLockFields()
     {
         var ctx = CreateFreshContext();
-        var txRepo = new TransactionRepository(ctx);
-        var repo = new DisputeRepository(ctx);
+        var txRepo = new TransactionRepository(ctx, NullLogger<TransactionRepository>.Instance);
+        var repo = new DisputeRepository(ctx, NullLogger<DisputeRepository>.Instance);
 
         var (_, dispute) = await SeedOneAsync(txRepo, repo);
         await repo.UpdateLockAsync(dispute.Id, 42, "Banker One", DateTime.UtcNow);

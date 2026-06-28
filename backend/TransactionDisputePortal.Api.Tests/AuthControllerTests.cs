@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TransactionDisputePortal.Api.Controllers;
 using TransactionDisputePortal.Api.Integration;
@@ -27,7 +28,7 @@ public class AuthControllerTests
         configMock.Setup(c => c["Jwt:Key"]).Returns((string?)JwtKey);
         configMock.Setup(c => c["Jwt:Issuer"]).Returns((string?)"TestIssuer");
 
-        var controller = new AuthController(repoMock.Object, hasherMock.Object, configMock.Object);
+        var controller = new AuthController(repoMock.Object, hasherMock.Object, configMock.Object, NullLogger<AuthController>.Instance);
         return (controller, repoMock, hasherMock);
     }
 

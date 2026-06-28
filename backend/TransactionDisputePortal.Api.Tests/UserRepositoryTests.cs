@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using TransactionDisputePortal.Api.Data;
 using TransactionDisputePortal.Api.Integration;
@@ -30,7 +31,7 @@ public class UserRepositoryTests
     [Fact]
     public async Task AddUser_Stores_And_ReturnsUser()
     {
-        var repo = new UserRepository(CreateFreshContext());
+        var repo = new UserRepository(CreateFreshContext(), NullLogger<UserRepository>.Instance);
         var user = NewUser("alice");
 
         var added = await repo.AddAsync(user);
@@ -42,7 +43,7 @@ public class UserRepositoryTests
     [Fact]
     public async Task GetByUsername_ReturnsActiveUser()
     {
-        var repo = new UserRepository(CreateFreshContext());
+        var repo = new UserRepository(CreateFreshContext(), NullLogger<UserRepository>.Instance);
         await repo.AddAsync(NewUser("bob", isActive: true));
 
         var found = await repo.GetByUsernameAsync("bob");
@@ -54,7 +55,7 @@ public class UserRepositoryTests
     [Fact]
     public async Task GetByUsername_ReturnsNull_WhenNotFound()
     {
-        var repo = new UserRepository(CreateFreshContext());
+        var repo = new UserRepository(CreateFreshContext(), NullLogger<UserRepository>.Instance);
 
         var found = await repo.GetByUsernameAsync("nobody");
 
@@ -64,7 +65,7 @@ public class UserRepositoryTests
     [Fact]
     public async Task GetByUsername_ReturnsNull_WhenInactive()
     {
-        var repo = new UserRepository(CreateFreshContext());
+        var repo = new UserRepository(CreateFreshContext(), NullLogger<UserRepository>.Instance);
         await repo.AddAsync(NewUser("charlie", isActive: false));
 
         var found = await repo.GetByUsernameAsync("charlie");
@@ -75,7 +76,7 @@ public class UserRepositoryTests
     [Fact]
     public async Task GetById_ReturnsUser()
     {
-        var repo = new UserRepository(CreateFreshContext());
+        var repo = new UserRepository(CreateFreshContext(), NullLogger<UserRepository>.Instance);
         var added = await repo.AddAsync(NewUser("diana"));
 
         var found = await repo.GetByIdAsync(added.Id);
@@ -87,7 +88,7 @@ public class UserRepositoryTests
     [Fact]
     public async Task GetById_ReturnsNull_WhenMissing()
     {
-        var repo = new UserRepository(CreateFreshContext());
+        var repo = new UserRepository(CreateFreshContext(), NullLogger<UserRepository>.Instance);
 
         var found = await repo.GetByIdAsync(99999);
 
